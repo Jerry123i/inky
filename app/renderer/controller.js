@@ -224,8 +224,27 @@ ipc.on("keyboard-shortcuts", (event, visible) => {
 });
 
 
+function UpdateCharacterCount() {    
+    const bottomBar = document.getElementById("bottom-bar");
+    const inkLineRegex = /^\s*\**-*\s*(.*)$/;
+    const lineText = EditorView.getLine(EditorView.getCurrentCursorPos().row);
+
+    bottomBar.innerHTML = lineText;
+    
+    const result = inkLineRegex.exec(lineText);
+        
+    if (!result) {        
+        bottomBar.innerHTML = "";
+        return;
+    }
+    
+    bottomBar.innerHTML = "Line: " + (EditorView.getCurrentCursorPos().row+1) + " | Char Count: " + result[1].length.toString();
+}
+
 EditorView.setEvents({
+    
     "change": () => {
+        UpdateCharacterCount();
         LiveCompiler.setEdited();
         NavView.setKnots(InkProject.currentProject.activeInkFile);
     },
@@ -241,8 +260,12 @@ EditorView.setEvents({
         InkProject.currentProject.showInkFile(includePath);
         NavHistory.addStep();
     },
-    "navigate": () => NavHistory.addStep(),
+    "navigate": () => {
+        UpdateCharacterCount();
+        NavHistory.addStep();
+    },
     "changedLine": (pos) =>{
+        UpdateCharacterCount();
         if (InkProject.currentProject && InkProject.currentProject.activeInkFile){
             NavView.updateCurrentKnot(InkProject.currentProject.activeInkFile, pos);
     }
