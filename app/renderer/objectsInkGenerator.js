@@ -17,6 +17,11 @@ function formatInkValue(value, type) {
         return value ? "true" : "false";
     if( type === "number" )
         return String(Number(value) || 0);
+    if( type === "divert" ) {
+        if( !value )
+            return '""';
+        return `-> ${value}`;
+    }
     return `"${escapeInkString(value)}"`;
 }
 

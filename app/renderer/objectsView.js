@@ -29,8 +29,12 @@ var $instanceTypeSelect = null;
 var $instanceValuesBody = null;
 var $newObjectButton = null;
 var $deleteObjectButton = null;
+var $tabItems = null;
+var $classesSection = null;
+var $instancesSection = null;
 
 var visible = false;
+var activeTab = "classes";
 var objectTypes = [];
 var objects = [];
 var selectedTypeIndex = -1;
@@ -59,6 +63,14 @@ $(document).ready(() => {
     $instanceValuesBody = $objectsEditor.find(".objects-instance-values-body");
     $newObjectButton = $objectsEditor.find(".objects-new-object-button");
     $deleteObjectButton = $objectsEditor.find(".objects-delete-object-button");
+    $tabItems = $objectsEditor.find(".objects-tab-item");
+    $classesSection = $objectsEditor.find(".objects-classes-section");
+    $instancesSection = $objectsEditor.find(".objects-instances-section");
+
+    $tabItems.on("click", function() {
+        activeTab = $(this).attr("data-tab");
+        renderTabs();
+    });
 
     $createFilesButton.on("click", () => {
         var project = InkProject.currentProject;
@@ -415,6 +427,28 @@ function renderInstanceEditor() {
         } else if( variable.type === "number" ) {
             $valueCell.html(`<input type="number" class="form-control objects-instance-value">`);
             $valueCell.find("input").val(value);
+        } else if( variable.type === "divert" ) {
+            var targets = [];
+            if( InkProject.currentProject ) {
+                var targetsSet = new Set();
+                InkProject.currentProject.files.forEach(file => {
+                    if( file.symbols ) {
+                        var fileTargets = file.symbols.getCachedDivertTargets();
+                        if( fileTargets ) {
+                            fileTargets.forEach(t => targetsSet.add(t));
+                        }
+                    }
+                });
+                if( value && !targetsSet.has(value) ) {
+                    targetsSet.add(value);
+                }
+                targets = Array.from(targetsSet).sort();
+            }
+            var targetOptions = [`<option value="">${i18n._("(none)")}</option>`];
+            targets.forEach(target => {
+                targetOptions.push(`<option value="${target}" ${value === target ? "selected" : ""}>${target}</option>`);
+            });
+            $valueCell.html(`<select class="form-control objects-instance-value">${targetOptions.join("")}</select>`);
         } else {
             $valueCell.html(`<input type="text" class="form-control objects-instance-value">`);
             $valueCell.find("input").val(value);
@@ -422,6 +456,20 @@ function renderInstanceEditor() {
 
         $instanceValuesBody.append($row);
     });
+}
+
+function renderTabs() {
+    if( !$tabItems ) return;
+    $tabItems.removeClass("active");
+    $tabItems.filter(`[data-tab="${activeTab}"]`).addClass("active");
+
+    if( activeTab === "classes" ) {
+        $classesSection.show();
+        $instancesSection.hide();
+    } else {
+        $classesSection.hide();
+        $instancesSection.show();
+    }
 }
 
 function render() {
@@ -448,6 +496,7 @@ function render() {
     }
 
     showMissingState(false, true);
+    renderTabs();
     renderTypeList();
     renderTypeEditor();
     renderInstanceList();

@@ -168,3 +168,113 @@
 .window.contrast .sidebar .nav-wrapper::-webkit-scrollbar-thumb {
     background: #323232;
 }
+
+.window.contrast #objects-editor {
+    background-color: #222;
+    color: #faf2e7;
+}
+
+.window.contrast #objects-editor h3,
+.window.contrast #objects-editor h4,
+.window.contrast #objects-editor h5,
+.window.contrast #objects-editor label {
+    color: #faf2e7;
+}
+
+.window.contrast #objects-editor .objects-type-list,
+.window.contrast #objects-editor .objects-variables-table th,
+.window.contrast #objects-editor .objects-variables-table td,
+.window.contrast #objects-editor .objects-instance-list,
+.window.contrast #objects-editor .objects-instance-values-table th,
+.window.contrast #objects-editor .objects-instance-values-table td {
+    background: #282828;
+    border-color: #555;
+    color: #faf2e7;
+}
+
+.window.contrast #objects-editor .objects-variables-table th,
+.window.contrast #objects-editor .objects-instance-values-table th {
+    background: #333;
+}
+
+.window.contrast #objects-editor .objects-type-item,
+.window.contrast #objects-editor .objects-instance-item {
+    color: #ccc;
+    border-bottom: 1px solid #444;
+}
+
+.window.contrast #objects-editor .objects-type-item:hover,
+.window.contrast #objects-editor .objects-instance-item:hover {
+    background-color: #333;
+    color: #faf2e7;
+}
+
+.window.contrast #objects-editor .objects-type-item.active,
+.window.contrast #objects-editor .objects-instance-item.active {
+    background: #2f3e4c;
+    color: #fff;
+}
+
+.window.contrast #objects-editor .objects-validation-errors {
+    background: #5a2020;
+    border-color: #8a3030;
+    color: #fff;
+}
+
+.window.contrast #objects-editor .objects-instances-section {
+    border-top: none;
+}
+
+.window.contrast #objects-editor .form-control {
+    background-color: #1a1a1a;
+    border-color: #888;
+    color: #faf2e7;
+}
+
+.window.contrast #objects-editor .form-control:focus {
+    border-color: #3eebff;
+    box-shadow: 0 0 0 3px rgba(62, 235, 255, 0.2);
+}
+
+.window.contrast #objects-editor .btn-default {
+    background-color: #282828;
+    background-image: none;
+    border-color: #555;
+    color: #faf2e7;
+}
+
+.window.contrast #objects-editor .btn-default:hover {
+    background-color: #333;
+    color: #fff;
+}
+
+.window.contrast #objects-editor .btn-default:disabled {
+    background-color: #1e1e1e;
+    color: #666;
+    border-color: #444;
+}
+
+.window.contrast #objects-editor .objects-missing-state {
+    color: #ccc;
+}
+
+.window.contrast #objects-editor .objects-tab-group {
+    background-color: #282828;
+    border-color: #555;
+}
+
+.window.contrast #objects-editor .objects-tab-item {
+    background-color: #282828;
+    border-right-color: #555;
+    color: #888;
+}
+
+.window.contrast #objects-editor .objects-tab-item:hover {
+    background-color: #333;
+    color: #ccc;
+}
+
+.window.contrast #objects-editor .objects-tab-item.active {
+    background-color: #222;
+    color: #3eebff;
+}

@@ -165,3 +165,113 @@
 .window.focus .sidebar .nav-wrapper::-webkit-scrollbar-thumb {
     background: #323232;
 }
+
+.window.focus #objects-editor {
+    background-color: #181818;
+    color: #faf1c6;
+}
+
+.window.focus #objects-editor h3,
+.window.focus #objects-editor h4,
+.window.focus #objects-editor h5,
+.window.focus #objects-editor label {
+    color: #faf1c6;
+}
+
+.window.focus #objects-editor .objects-type-list,
+.window.focus #objects-editor .objects-variables-table th,
+.window.focus #objects-editor .objects-variables-table td,
+.window.focus #objects-editor .objects-instance-list,
+.window.focus #objects-editor .objects-instance-values-table th,
+.window.focus #objects-editor .objects-instance-values-table td {
+    background: #222;
+    border-color: #333;
+    color: #faf1c6;
+}
+
+.window.focus #objects-editor .objects-variables-table th,
+.window.focus #objects-editor .objects-instance-values-table th {
+    background: #2a2a2a;
+}
+
+.window.focus #objects-editor .objects-type-item,
+.window.focus #objects-editor .objects-instance-item {
+    color: #bbb;
+    border-bottom: 1px solid #2d2d2d;
+}
+
+.window.focus #objects-editor .objects-type-item:hover,
+.window.focus #objects-editor .objects-instance-item:hover {
+    background-color: #2b2b2b;
+    color: #faf1c6;
+}
+
+.window.focus #objects-editor .objects-type-item.active,
+.window.focus #objects-editor .objects-instance-item.active {
+    background: #2f2f2f;
+    color: #fff;
+}
+
+.window.focus #objects-editor .objects-validation-errors {
+    background: #4a1a1a;
+    border-color: #6a2a2a;
+    color: #fff;
+}
+
+.window.focus #objects-editor .objects-instances-section {
+    border-top: none;
+}
+
+.window.focus #objects-editor .form-control {
+    background-color: #121212;
+    border-color: #444;
+    color: #faf1c6;
+}
+
+.window.focus #objects-editor .form-control:focus {
+    border-color: #5f6238;
+    box-shadow: 0 0 0 3px rgba(95, 98, 56, 0.2);
+}
+
+.window.focus #objects-editor .btn-default {
+    background-color: #222;
+    background-image: none;
+    border-color: #333;
+    color: #faf1c6;
+}
+
+.window.focus #objects-editor .btn-default:hover {
+    background-color: #2b2b2b;
+    color: #fff;
+}
+
+.window.focus #objects-editor .btn-default:disabled {
+    background-color: #181818;
+    color: #555;
+    border-color: #2a2a2a;
+}
+
+.window.focus #objects-editor .objects-missing-state {
+    color: #bbb;
+}
+
+.window.focus #objects-editor .objects-tab-group {
+    background-color: #222;
+    border-color: #333;
+}
+
+.window.focus #objects-editor .objects-tab-item {
+    background-color: #222;
+    border-right-color: #333;
+    color: #888;
+}
+
+.window.focus #objects-editor .objects-tab-item:hover {
+    background-color: #2b2b2b;
+    color: #bbb;
+}
+
+.window.focus #objects-editor .objects-tab-item.active {
+    background-color: #181818;
+    color: #faf1c6;
+}
