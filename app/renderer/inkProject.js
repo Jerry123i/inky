@@ -13,6 +13,7 @@ const NavView = require("./navView.js").NavView;
 
 const InkFile = require("./inkFile.js").InkFile;
 const LiveCompiler = require("./liveCompiler.js").LiveCompiler;
+const ObjectsManager = require("./objectsManager.js");
 
 // -----------------------------------------------------------------
 // InkProject
@@ -77,6 +78,7 @@ InkProject.prototype.createInkFile = function(anyPath, isBrandNew, loadErrorCall
     });
 
     this.files.push(inkFile);
+    ObjectsManager.markHiddenSystemFiles(this);
 
     this.sortFileList();
     
@@ -167,6 +169,8 @@ InkProject.prototype.refreshIncludes = function() {
 
         this.sortFileList();
     }
+
+    ObjectsManager.markHiddenSystemFiles(this);
 
     NavView.setFiles(this.mainInk, this.files);
     EditorView.setFiles(this.files);
@@ -293,6 +297,9 @@ InkProject.prototype.showInkFile = function(inkFile) {
 
     if( _.isString(inkFile) )
         inkFile = this.inkFileWithRelativePath(inkFile);
+
+    if( inkFile && inkFile.isHiddenSystemFile )
+        return;
 
     if( inkFile && inkFile != this.activeInkFile ) {
         if( this.activeInkFile )

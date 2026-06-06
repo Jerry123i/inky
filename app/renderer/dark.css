@@ -1,6 +1,8 @@
 .window.dark #main,
+.window.dark #editor-pane,
 .window.dark #editor,
 .window.dark #editor .ace_gutter-layer,
+.window.dark #objects-editor,
 .window.dark .split {
     background-color: #282828;
 }
@@ -22,6 +24,7 @@
 
 .window.dark #main .sidebar .filename,
 .window.dark #main .sidebar .footer .add-include-button,
+.window.dark #main .sidebar .footer .manage-objects-button,
 .window.dark #main .sidebar .footer .new-include-form h5 {
     color: #888;
 }
@@ -168,4 +171,38 @@
 
 .window.dark .sidebar .nav-wrapper::-webkit-scrollbar-thumb {
     background: #323232;
+}
+
+.window.dark #objects-editor .objects-type-list,
+.window.dark #objects-editor .objects-variables-table th,
+.window.dark #objects-editor .objects-variables-table td {
+    background: #1e1e1e;
+    border-color: #444;
+    color: #ccc;
+}
+
+.window.dark #objects-editor .objects-type-item.active {
+    background: #1a292b;
+}
+
+.window.dark #objects-editor .objects-validation-errors {
+    background: #4a2020;
+    border-color: #6a3030;
+    color: #eee;
+}
+
+.window.dark #objects-editor .objects-instances-section {
+    border-top-color: #444;
+}
+
+.window.dark #objects-editor .objects-instance-list,
+.window.dark #objects-editor .objects-instance-values-table th,
+.window.dark #objects-editor .objects-instance-values-table td {
+    background: #1e1e1e;
+    border-color: #444;
+    color: #ccc;
+}
+
+.window.dark #objects-editor .objects-instance-item.active {
+    background: #1a292b;
 }

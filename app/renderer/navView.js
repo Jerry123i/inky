@@ -53,6 +53,12 @@ $(document).ready(() => {
 
     // Add new include interactions
     $newIncludeForm = $footer.find(".new-include-form");
+    $sidebar.on("click", ".manage-objects-button", function(event) {
+        event.preventDefault();
+        $fileNavWrapper.find(".nav-group-item").removeClass("active");
+        if( events.openObjectsManager )
+            events.openObjectsManager();
+    });
     $sidebar.on("click", ".add-include-button", function(event) {
         setIncludeFormVisible(true);
         event.preventDefault();
@@ -233,8 +239,9 @@ function updateCurrentKnot(mainInk, cursorPos){
 }
 
 function setFiles(mainInk, allFiles) {
-    var unusedFiles = _.filter(allFiles, f => f.isSpare);
-    var normalIncludes = _.filter(allFiles, f => !f.isSpare && f != mainInk);
+    var visibleFiles = _.filter(allFiles, f => !f.isHiddenSystemFile);
+    var unusedFiles = _.filter(visibleFiles, f => f.isSpare);
+    var normalIncludes = _.filter(visibleFiles, f => !f.isSpare && f != mainInk);
     var groupedIncludes = _.groupBy(normalIncludes, f => { 
         var dirName = path.dirname(f.relativePath());
         if( dirName == "." )

@@ -54,7 +54,8 @@ function show() {
 
     // Collect all files
     var files = InkProject.currentProject.files;
-    cachedFiles = _.map(files, file => ({
+    var visibleFiles = _.filter(files, file => !file.isHiddenSystemFile);
+    cachedFiles = _.map(visibleFiles, file => ({
         name: file.filename(),
         file: file
     }));
@@ -62,8 +63,8 @@ function show() {
     // Collect all symbols
     var allSymbols = [];
     var activeFileSymbols = [];
-    for(var i=0; i<files.length; i++) {
-        var file = files[i];
+    for(var i=0; i<visibleFiles.length; i++) {
+        var file = visibleFiles[i];
         var fileSymbols = file.symbols.getSymbols();
 
         if( file == InkProject.currentProject.activeInkFile ) {
@@ -78,10 +79,12 @@ function show() {
     // Collect individual lines of all files
     // First, put the active file at the start so it gets searched first
     var filesSorted = [];
-    filesSorted.push(InkProject.currentProject.activeInkFile);
-    for(var i=0; i<files.length; i++) {
-        var f = files[i];
-        if( f != InkProject.currentProject.activeInkFile )
+    var activeFile = InkProject.currentProject.activeInkFile;
+    if( activeFile && !activeFile.isHiddenSystemFile )
+        filesSorted.push(activeFile);
+    for(var i=0; i<visibleFiles.length; i++) {
+        var f = visibleFiles[i];
+        if( f != activeFile )
             filesSorted.push(f);
     }
 

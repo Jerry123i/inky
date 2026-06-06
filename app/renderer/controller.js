@@ -25,10 +25,12 @@ const LiveCompiler = require("./liveCompiler.js").LiveCompiler;
 const InkProject = require("./inkProject.js").InkProject;
 const NavHistory = require("./navHistory.js").NavHistory;
 const GotoAnything = require("./goto.js").GotoAnything;
+const { ObjectsView } = require("./objectsView.js");
 const i18n = require("./i18n.js");
 
 InkProject.setEvents({
     "newProject": (project) => {
+        ObjectsView.hide();
         EditorView.focus();
         LiveCompiler.setProject(project);
         var filename = project.activeInkFile.filename();
@@ -36,14 +38,21 @@ InkProject.setEvents({
         NavView.setMainInkFilename(filename);
         NavHistory.reset();
         NavHistory.addStep();
+        ObjectsView.refresh();
     },
     "didSave": () => {
+        if( ObjectsView.isVisible() ) {
+            ObjectsView.refresh();
+            ToolbarView.setTitle(i18n._("Manage Objects"));
+            return;
+        }
         var activeInk = InkProject.currentProject.activeInkFile;
         ToolbarView.setTitle(activeInk.filename());
         NavView.setMainInkFilename(InkProject.currentProject.mainInk.filename());
         NavView.highlightRelativePath(activeInk.relativePath());
     },
     "didSwitchToInkFile": (inkFile) => {
+        ObjectsView.hide();
         var filename = inkFile.filename();
         ToolbarView.setTitle(filename);
         NavView.highlightRelativePath(inkFile.relativePath());
@@ -238,6 +247,10 @@ EditorView.setEvents({
         }
     },
     "jumpToInclude": (includePath) => {
+        var inkFile = InkProject.currentProject.inkFileWithRelativePath(includePath);
+        if( inkFile && inkFile.isHiddenSystemFile )
+            return;
+        ObjectsView.hide();
         InkProject.currentProject.showInkFile(includePath);
         NavHistory.addStep();
     },
@@ -284,8 +297,23 @@ ToolbarView.setEvents({
     }
 });
 
+ObjectsView.setEvents({
+    didShow: () => {
+        ToolbarView.setTitle(i18n._("Manage Objects"));
+    },
+    didHide: () => {
+        var project = InkProject.currentProject;
+        if( project && project.activeInkFile )
+            ToolbarView.setTitle(project.activeInkFile.filename());
+    }
+});
+
 NavView.setEvents({
+    openObjectsManager: () => {
+        ObjectsView.show();
+    },
     clickFileId: (fileId) => {
+        ObjectsView.hide();
         var inkFile = InkProject.currentProject.inkFileWithId(fileId);
         InkProject.currentProject.showInkFile(inkFile);
         NavHistory.addStep();
@@ -312,6 +340,7 @@ NavView.setEvents({
 
 GotoAnything.setEvents({
     gotoFile: (file, row) => {
+        ObjectsView.hide();
         InkProject.currentProject.showInkFile(file);
         if( typeof row !== 'undefined' )
             EditorView.gotoLine(row+1);

@@ -87,6 +87,10 @@
             <div class="nav-wrapper hidden hasFooter" id="file-nav-wrapper">
             </div>
             <div class="footer">
+              <a class="manage-objects-button">
+                <span class="icon icon-cog"></span>
+                <span class="i18n">Manage Objects</span>
+              </a>
               <a class="add-include-button">
                 <span class="icon icon-plus"></span>
                 <span class="i18n">Add new include</span>
@@ -115,8 +119,80 @@
           <div class="split hidden"></div>
 
           <div class="twopane">
+            <div id="editor-pane" class="editor-pane">
             <div id="editor"></div>
-            
+
+            <div id="objects-editor" class="hidden">
+              <div class="objects-header">
+                <h3 class="i18n">Manage Objects</h3>
+              </div>
+              <div class="objects-missing-state">
+                <p class="objects-save-project-message i18n" style="display:none">Save the project first to use Objects.</p>
+                <p class="i18n">Objects requires Ink_blob_classes.json, Ink_blob_objects.json, and ObjectVariablesFunctions.ink in your project.</p>
+                <button type="button" class="btn btn-primary create-objects-files-button i18n">Create files</button>
+              </div>
+              <div class="objects-editor-state" style="display:none">
+                <div class="objects-validation-errors hidden"></div>
+                <div class="objects-columns">
+                  <div class="objects-type-panel">
+                    <h4 class="i18n">Object Types</h4>
+                    <div class="objects-type-list"></div>
+                    <button type="button" class="btn btn-default objects-add-type-button i18n">Add type</button>
+                  </div>
+                  <div class="objects-detail-panel">
+                    <h4 class="i18n">Type details</h4>
+                    <label class="i18n">Name</label>
+                    <input type="text" class="form-control objects-type-name-input">
+                    <div class="objects-variables-header">
+                      <h5 class="i18n">Variables</h5>
+                      <button type="button" class="btn btn-default objects-add-variable-button i18n">Add variable</button>
+                    </div>
+                    <table class="objects-variables-table">
+                      <thead>
+                        <tr>
+                          <th class="i18n">Name</th>
+                          <th class="i18n">Type</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody class="objects-variables-body"></tbody>
+                    </table>
+                    <button type="button" class="btn btn-default objects-delete-type-button i18n">Delete type</button>
+                  </div>
+                </div>
+                <div class="objects-instances-section">
+                  <h4 class="i18n">Objects</h4>
+                  <div class="objects-columns objects-instance-columns">
+                    <div class="objects-instance-panel">
+                      <div class="objects-instance-list"></div>
+                      <button type="button" class="btn btn-default objects-new-object-button i18n">New Object</button>
+                    </div>
+                    <div class="objects-instance-detail-panel">
+                      <h4 class="i18n">Object details</h4>
+                      <label class="i18n">Name</label>
+                      <input type="text" class="form-control objects-instance-name-input">
+                      <label class="i18n">Type</label>
+                      <select class="form-control objects-instance-type-select"></select>
+                      <div class="objects-instance-values-header">
+                        <h5 class="i18n">Starting values</h5>
+                      </div>
+                      <table class="objects-instance-values-table">
+                        <thead>
+                          <tr>
+                            <th class="i18n">Variable</th>
+                            <th class="i18n">Value</th>
+                          </tr>
+                        </thead>
+                        <tbody class="objects-instance-values-body"></tbody>
+                      </table>
+                      <button type="button" class="btn btn-default objects-delete-object-button i18n">Delete object</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </div><!-- editor-pane -->
+
             <div class="split"></div>
 
             <div id="player">
