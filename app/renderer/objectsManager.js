@@ -105,14 +105,34 @@ function loadObjects(projectDir) {
     }
 }
 
+function loadObjectVariables(projectDir) {
+    if( !projectDir )
+        return [];
+
+    var filePath = blobClassesPath(projectDir);
+    if( !fs.existsSync(filePath) )
+        return [];
+
+    try {
+        var text = fs.readFileSync(filePath, "utf8");
+        var doc = parseJson(text);
+        if( !doc )
+            return [];
+        return doc.objectVariables || [];
+    } catch( err ) {
+        return [];
+    }
+}
+
 function loadAll(projectDir) {
     var objectTypes = loadObjectTypes(projectDir);
     var objects = syncObjectsWithTypes(objectTypes, loadObjects(projectDir));
-    return { objectTypes, objects };
+    var objectVariables = loadObjectVariables(projectDir);
+    return { objectTypes, objects, objectVariables };
 }
 
-function saveObjectTypes(projectDir, objectTypes) {
-    var doc = normalizeDocument({ version: 1, objectTypes: objectTypes });
+function saveObjectTypes(projectDir, objectTypes, objectVariables) {
+    var doc = normalizeDocument({ version: 1, objectTypes: objectTypes, objectVariables: objectVariables || [] });
     writeJsonFile(blobClassesPath(projectDir), doc);
 }
 
@@ -137,24 +157,32 @@ function updateManagedInkFile(project, content) {
     LiveCompiler.setEdited();
 }
 
-function regenerateInk(project, objectTypes, objects) {
-    var content = generateInk(objectTypes, objects);
+function regenerateInk(project, objectTypes, objects, objectVariables) {
+    if( typeof objectVariables === "undefined" ) {
+        var projectDir = project.mainInk.projectDir;
+        objectVariables = loadObjectVariables(projectDir);
+    }
+    var content = generateInk(objectTypes, objects, objectVariables);
     updateManagedInkFile(project, content);
 }
 
-function saveAll(project, objectTypes, objects) {
+function saveAll(project, objectTypes, objects, objectVariables) {
     var projectDir = project.mainInk.projectDir;
     if( !projectDir )
         return { success: false, errors: [] };
+
+    if( typeof objectVariables === "undefined" ) {
+        objectVariables = loadObjectVariables(projectDir);
+    }
 
     objects = syncObjectsWithTypes(objectTypes, objects);
     var errors = validateAll(objectTypes, objects);
     if( errors.length > 0 )
         return { success: false, errors: errors, objects: objects };
 
-    saveObjectTypes(projectDir, objectTypes);
+    saveObjectTypes(projectDir, objectTypes, objectVariables);
     saveObjects(projectDir, objects);
-    regenerateInk(project, objectTypes, objects);
+    regenerateInk(project, objectTypes, objects, objectVariables);
     return { success: true, errors: [], objects: objects };
 }
 
@@ -171,14 +199,15 @@ function createObjectsFiles(project) {
         return false;
 
     if( !fs.existsSync(blobClassesPath(projectDir)) )
-        saveObjectTypes(projectDir, []);
+        saveObjectTypes(projectDir, [], []);
 
     if( !fs.existsSync(blobObjectsPath(projectDir)) )
         saveObjects(projectDir, []);
 
     var objectTypes = loadObjectTypes(projectDir);
     var objects = loadObjects(projectDir);
-    var inkContent = generateInk(objectTypes, objects);
+    var objectVariables = loadObjectVariables(projectDir);
+    var inkContent = generateInk(objectTypes, objects, objectVariables);
 
     if( !fs.existsSync(varsFunctionsPath(projectDir)) )
         fs.writeFileSync(varsFunctionsPath(projectDir), inkContent, "utf8");
@@ -201,6 +230,7 @@ exports.getStatus = getStatus;
 exports.filesReady = filesReady;
 exports.loadObjectTypes = loadObjectTypes;
 exports.loadObjects = loadObjects;
+exports.loadObjectVariables = loadObjectVariables;
 exports.loadAll = loadAll;
 exports.saveObjectTypes = saveObjectTypes;
 exports.saveObjects = saveObjects;

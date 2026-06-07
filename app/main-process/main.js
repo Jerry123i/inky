@@ -26,7 +26,7 @@ let pendingPathToOpen = null;
 let hasFinishedLaunch = false;
 
 // main
-ipcMain.on('show-context-menu', (event) => {
+ipcMain.on('show-context-menu', (event, params) => {
     const template = [
         {
             label: 'Cut',
@@ -42,6 +42,17 @@ ipcMain.on('show-context-menu', (event) => {
         },
       { type: 'separator' },
     ]
+
+    if (params && params.showNewObjectVar) {
+        template.push({
+            label: 'New Object Variable',
+            click(menuItem, browserWindow) {
+                browserWindow.webContents.send('context-new-object-variable', params.objectTypes);
+            }
+        });
+        template.push({ type: 'separator' });
+    }
+
     const menu = Menu.buildFromTemplate(template)
     menu.popup(BrowserWindow.fromWebContents(event.sender))
 })

@@ -5,7 +5,8 @@ const { defaultValueForType } = require("./objectsInkGenerator.js");
 function emptyDocument() {
     return {
         version: SCHEMA_VERSION,
-        objectTypes: []
+        objectTypes: [],
+        objectVariables: []
     };
 }
 
@@ -22,9 +23,16 @@ function normalizeDocument(data) {
         })) : []
     }));
 
+    var objectVariables = _.isArray(data.objectVariables) ? data.objectVariables : [];
+    objectVariables = objectVariables.map(ov => ({
+        name: typeof ov.name === "string" ? ov.name.trim() : "",
+        typeName: typeof ov.typeName === "string" ? ov.typeName.trim() : ""
+    }));
+
     return {
         version: SCHEMA_VERSION,
-        objectTypes: objectTypes
+        objectTypes: objectTypes,
+        objectVariables: objectVariables
     };
 }
 

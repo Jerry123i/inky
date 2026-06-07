@@ -37,11 +37,13 @@ var visible = false;
 var activeTab = "classes";
 var objectTypes = [];
 var objects = [];
+var objectVariables = [];
 var selectedTypeIndex = -1;
 var selectedObjectIndex = -1;
 var previousTypeName = "";
 var saveTimeout = null;
 var events = {};
+var isCreatingObject = false;
 
 function generateRandomId() {
     return Math.floor(Math.random() * 1000000000);
@@ -73,7 +75,8 @@ $(document).ready(() => {
 
     $tabItems.on("click", function() {
         activeTab = $(this).attr("data-tab");
-        renderTabs();
+        isCreatingObject = false;
+        render();
     });
 
     $createFilesButton.on("click", () => {
@@ -100,6 +103,7 @@ $(document).ready(() => {
         var deletedTypeName = objectTypes[selectedTypeIndex].name;
         objectTypes.splice(selectedTypeIndex, 1);
         objects = objects.filter(obj => obj.typeName !== deletedTypeName);
+        objectVariables = objectVariables.filter(ov => ov.typeName !== deletedTypeName);
 
         if( selectedTypeIndex >= objectTypes.length )
             selectedTypeIndex = objectTypes.length - 1;
@@ -145,6 +149,10 @@ $(document).ready(() => {
             objects.forEach(obj => {
                 if( obj.typeName === previousTypeName )
                     obj.typeName = newName;
+            });
+            objectVariables.forEach(ov => {
+                if( ov.typeName === previousTypeName )
+                    ov.typeName = newName;
             });
             renderInstanceList();
             renderInstanceEditor();
@@ -239,21 +247,9 @@ $(document).ready(() => {
     });
 
     $newObjectButton.on("click", () => {
-        var defaultType = objectTypes.length > 0 ? objectTypes[0] : null;
-
-        var values = createDefaultValuesForType(defaultType);
-        values.id = generateRandomId();
-
-        var newObject = {
-            id: values.id,
-            name: "new_"+(defaultType ? defaultType.name : ""),
-            typeName: defaultType ? defaultType.name : "",
-            values: values
-        };
-        objects.push(newObject);
-        selectedObjectIndex = objects.length - 1;
+        isCreatingObject = true;
+        selectedObjectIndex = -1;
         render();
-        scheduleSave();
     });
 
     $deleteObjectButton.on("click", () => {
@@ -262,11 +258,13 @@ $(document).ready(() => {
         objects.splice(selectedObjectIndex, 1);
         if( selectedObjectIndex >= objects.length )
             selectedObjectIndex = objects.length - 1;
+        isCreatingObject = false;
         render();
         scheduleSave();
     });
 
     $instanceList.on("click", ".objects-instance-item", function() {
+        isCreatingObject = false;
         selectedObjectIndex = parseInt($(this).attr("data-object-index"), 10);
         renderInstanceEditor();
         renderInstanceList();
@@ -282,6 +280,28 @@ $(document).ready(() => {
     });
 
     $instanceTypeSelect.on("change", () => {
+        if (isCreatingObject) {
+            var newTypeName = $instanceTypeSelect.val();
+            var type = objectTypes.find(t => t.name === newTypeName);
+            if (!type) return;
+
+            var values = createDefaultValuesForType(type);
+            values.id = generateRandomId();
+
+            var newObject = {
+                id: values.id,
+                name: "new_" + type.name,
+                typeName: type.name,
+                values: values
+            };
+            objects.push(newObject);
+            selectedObjectIndex = objects.length - 1;
+            isCreatingObject = false;
+            render();
+            scheduleSave();
+            return;
+        }
+
         if( selectedObjectIndex < 0 )
             return;
 
@@ -335,7 +355,7 @@ function saveIfValid() {
     if( !project || !project.mainInk.projectDir )
         return;
 
-    var result = ObjectsManager.saveAll(project, objectTypes, objects);
+    var result = ObjectsManager.saveAll(project, objectTypes, objects, objectVariables);
     if( result.objects )
         objects = result.objects;
     renderValidation(result.errors);
@@ -419,9 +439,34 @@ function renderInstanceList() {
 }
 
 function renderInstanceEditor() {
+    if (isCreatingObject) {
+        $instanceNameInput.hide();
+        $instanceNameInput.prev('label').hide();
+        $deleteObjectButton.hide();
+        $objectsEditor.find(".objects-instance-values-header").hide();
+        $objectsEditor.find(".objects-instance-values-table").hide();
+
+        $instanceTypeSelect.empty();
+        $instanceTypeSelect.append(`<option value="" disabled selected>${i18n._("Select a type...")}</option>`);
+        objectTypes.forEach(type => {
+            var label = type.name && type.name.trim().length > 0 ? type.name : i18n._("(unnamed)");
+            $instanceTypeSelect.append(`<option value="${type.name}">${label}</option>`);
+        });
+
+        $instanceTypeSelect.prop("disabled", false);
+        return;
+    }
+
+    // Default state: show everything
+    $instanceNameInput.show();
+    $instanceNameInput.prev('label').show();
+    $deleteObjectButton.show();
+    $objectsEditor.find(".objects-instance-values-header").show();
+    $objectsEditor.find(".objects-instance-values-table").show();
+
     var hasSelection = selectedObjectIndex >= 0 && selectedObjectIndex < objects.length;
     $instanceNameInput.prop("disabled", !hasSelection);
-    $instanceTypeSelect.prop("disabled", !hasSelection || objectTypes.length === 0);
+    $instanceTypeSelect.prop("disabled", true); // Type of the object cannot be changed in the editor
     $deleteObjectButton.prop("disabled", !hasSelection);
     $newObjectButton.prop("disabled", objectTypes.length === 0);
 
@@ -556,8 +601,10 @@ function refresh() {
     if( !project ) {
         objectTypes = [];
         objects = [];
+        objectVariables = [];
         selectedTypeIndex = -1;
         selectedObjectIndex = -1;
+        isCreatingObject = false;
         previousTypeName = "";
         render();
         return;
@@ -566,6 +613,9 @@ function refresh() {
     var loaded = ObjectsManager.loadAll(project.mainInk.projectDir);
     objectTypes = _.cloneDeep(loaded.objectTypes);
     objects = _.cloneDeep(loaded.objects);
+    objectVariables = _.cloneDeep(loaded.objectVariables || []);
+
+    isCreatingObject = false;
 
     if( selectedTypeIndex >= objectTypes.length )
         selectedTypeIndex = objectTypes.length - 1;

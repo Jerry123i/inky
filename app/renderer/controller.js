@@ -426,3 +426,97 @@ ipc.on("zoom", (event, amount) => {
 ipc.on("insertSnippet", (event, snippetContent) => {
     EditorView.insert(snippetContent);
 });
+
+const ObjectsManager = require("./objectsManager.js");
+
+ipc.on("context-new-object-variable", (event, objectTypes) => {
+    var $modal = $("#new-object-variable-modal");
+    var $nameInput = $("#new-object-var-name");
+    var $typeSelect = $("#new-object-var-type");
+
+    $nameInput.val("");
+    $typeSelect.empty();
+    objectTypes.forEach(type => {
+        $typeSelect.append(`<option value="${type}">${type}</option>`);
+    });
+
+    $modal.removeClass("hidden");
+    $nameInput.focus();
+});
+
+$(document).ready(() => {
+    var $modal = $("#new-object-variable-modal");
+    var $nameInput = $("#new-object-var-name");
+    var $typeSelect = $("#new-object-var-type");
+    var $confirmButton = $("#new-object-var-confirm");
+    var $cancelButton = $("#new-object-var-cancel");
+
+    $cancelButton.on("click", () => {
+        $modal.addClass("hidden");
+        EditorView.focus();
+    });
+
+    // Close on Esc key
+    $(document).on("keydown", (e) => {
+        if (e.key === "Escape" && !$modal.hasClass("hidden")) {
+            $modal.addClass("hidden");
+            EditorView.focus();
+        }
+    });
+
+    $confirmButton.on("click", () => {
+        var name = $nameInput.val().trim();
+        var selectedType = $typeSelect.val();
+
+        if (!name) {
+            alert(i18n._("Variable name is required."));
+            return;
+        }
+
+        // Validate variable name is a valid Ink identifier
+        if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+            alert(i18n._("Invalid variable name. Must start with a letter or underscore and contain only alphanumeric characters and underscores."));
+            return;
+        }
+
+        var project = InkProject.currentProject;
+        if (!project || !project.mainInk.projectDir) return;
+
+        // Check for clashes
+        var activeInk = project.activeInkFile;
+        if (activeInk && activeInk.symbols && activeInk.symbols.getCachedVariables().has(name)) {
+            alert(i18n._(`Variable name "${name}" already exists in the project.`));
+            return;
+        }
+
+        var projectDir = project.mainInk.projectDir;
+        var objectTypes = ObjectsManager.loadObjectTypes(projectDir);
+        var objectVariables = ObjectsManager.loadObjectVariables(projectDir);
+
+        if (objectVariables.some(ov => ov.name === name)) {
+            alert(i18n._(`Object variable name "${name}" already exists.`));
+            return;
+        }
+
+        // 1. Insert variable declaration in active file
+        EditorView.insert(`VAR ${name} = 0\n`);
+
+        // 2. Add to objectVariables
+        objectVariables.push({
+            name: name,
+            typeName: selectedType
+        });
+
+        // 3. Save classes and objects and regenerate
+        var objects = ObjectsManager.loadObjects(projectDir);
+        ObjectsManager.saveObjectTypes(projectDir, objectTypes, objectVariables);
+        ObjectsManager.regenerateInk(project, objectTypes, objects, objectVariables);
+
+        // 4. Refresh view
+        ObjectsView.refresh();
+
+        // 5. Close modal
+        $modal.addClass("hidden");
+        EditorView.focus();
+    });
+});
