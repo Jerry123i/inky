@@ -43,6 +43,10 @@ var previousTypeName = "";
 var saveTimeout = null;
 var events = {};
 
+function generateRandomId() {
+    return Math.floor(Math.random() * 1000000000);
+}
+
 $(document).ready(() => {
     $objectsEditor = $("#objects-editor");
     $editor = $("#editor");
@@ -82,7 +86,7 @@ $(document).ready(() => {
     });
 
     $addTypeButton.on("click", () => {
-        objectTypes.push({ name: "", variables: [] });
+        objectTypes.push({ name: "newType", variables: [{name: "id", type: "number"}] });
         selectedTypeIndex = objectTypes.length - 1;
         previousTypeName = "";
         render();
@@ -151,6 +155,11 @@ $(document).ready(() => {
 
     $variablesBody.on("input", ".objects-variable-name", function() {
         var variableIndex = parseInt($(this).closest("tr").attr("data-variable-index"), 10);
+        if (
+            selectedTypeIndex >= 0 &&
+            objectTypes[selectedTypeIndex].variables[variableIndex].name === "id"
+        )
+            return;
         if( selectedTypeIndex < 0 )
             return;
         objectTypes[selectedTypeIndex].variables[variableIndex].name = $(this).val();
@@ -210,6 +219,12 @@ $(document).ready(() => {
         if( selectedTypeIndex < 0 )
             return;
 
+        if (
+            type.variables[variableIndex] &&
+            type.variables[variableIndex].name === "id"
+        )
+            return;
+        
         var type = objectTypes[selectedTypeIndex];
         var removedName = type.variables[variableIndex].name;
         type.variables.splice(variableIndex, 1);
@@ -225,10 +240,15 @@ $(document).ready(() => {
 
     $newObjectButton.on("click", () => {
         var defaultType = objectTypes.length > 0 ? objectTypes[0] : null;
+
+        var values = createDefaultValuesForType(defaultType);
+        values.id = generateRandomId();
+
         var newObject = {
-            name: "",
+            id: values.id,
+            name: "new_"+(defaultType ? defaultType.name : ""),
             typeName: defaultType ? defaultType.name : "",
-            values: createDefaultValuesForType(defaultType)
+            values: values
         };
         objects.push(newObject);
         selectedObjectIndex = objects.length - 1;
@@ -360,6 +380,8 @@ function renderTypeEditor() {
 
     $variablesBody.empty();
     type.variables.forEach((variable, variableIndex) => {
+        if (variable.name === "id")
+            return;
         var typeOptions = VARIABLE_TYPES.map(t =>
             `<option value="${t}" ${variable.type === t ? "selected" : ""}>${t}</option>`
         ).join("");
@@ -380,9 +402,19 @@ function renderInstanceList() {
     $instanceList.empty();
     objects.forEach((object, index) => {
         var label = object.name && object.name.trim().length > 0 ? object.name : i18n._("(unnamed)");
+        var objectId = object.values && object.values.id !== undefined ? object.values.id : "";
         var typeSuffix = object.typeName ? ` (${object.typeName})` : "";
         var activeClass = index === selectedObjectIndex ? "active" : "";
-        $instanceList.append(`<a class="objects-instance-item nav-group-item ${activeClass}" data-object-index="${index}">${label}${typeSuffix}</a>`);
+        $instanceList.append(`
+            <a class="objects-instance-item nav-group-item ${activeClass}"
+               data-object-index="${index}">
+               ${label}
+               <span style="font-size:11px; opacity:0.6; margin-left:4px;">
+                   #${objectId}
+               </span>
+               ${typeSuffix}
+            </a>
+        `);
     });
 }
 
@@ -416,6 +448,8 @@ function renderInstanceEditor() {
         return;
 
     type.variables.forEach(variable => {
+        if (variable.name === "id")
+            return;
         var value = object.values.hasOwnProperty(variable.name)
             ? object.values[variable.name]
             : coerceValue(null, variable.type);
