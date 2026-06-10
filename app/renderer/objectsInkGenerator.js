@@ -34,14 +34,27 @@ function capitalize(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-function generateInk(objectTypes, objects, objectVariables) {
+function generateInk(objectTypes, objects, objectVariables, enums) {
     objectVariables = objectVariables || [];
+    enums = enums || [];
     var lines = [
         "// Managed by Inky Objects. Do not edit manually.",
         ""
     ];
 
-    // 1. Generate Object Declarations
+    // 1. Generate Enum Declarations
+    if( enums.length > 0 ) {
+        lines.push("// === Enums ===");
+        enums.forEach(e => {
+            var val = typeof e.value === "string"
+                ? `"${escapeInkString(e.value)}"`
+                : String(Number(e.value) || 0);
+            lines.push(`CONST ${e.name} = ${val}`);
+        });
+        lines.push("");
+    }
+
+    // 2. Generate Object Declarations
     objects.forEach((object, index) => {
         var type = objectTypes.find(t => t.name === object.typeName);
         if( !type )
@@ -58,7 +71,7 @@ function generateInk(objectTypes, objects, objectVariables) {
         lines.push("");
     });
 
-    // 2. Generate Getters and Setters for Object Variables
+    // 3. Generate Getters and Setters for Object Variables
     objectVariables.forEach(objVar => {
         var type = objectTypes.find(t => t.name === objVar.typeName);
         if( !type )

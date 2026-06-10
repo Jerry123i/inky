@@ -124,15 +124,35 @@ function loadObjectVariables(projectDir) {
     }
 }
 
+function loadEnums(projectDir) {
+    if( !projectDir )
+        return [];
+
+    var filePath = blobClassesPath(projectDir);
+    if( !fs.existsSync(filePath) )
+        return [];
+
+    try {
+        var text = fs.readFileSync(filePath, "utf8");
+        var doc = parseJson(text);
+        if( !doc )
+            return [];
+        return doc.enums || [];
+    } catch( err ) {
+        return [];
+    }
+}
+
 function loadAll(projectDir) {
     var objectTypes = loadObjectTypes(projectDir);
     var objects = syncObjectsWithTypes(objectTypes, loadObjects(projectDir));
     var objectVariables = loadObjectVariables(projectDir);
-    return { objectTypes, objects, objectVariables };
+    var enums = loadEnums(projectDir);
+    return { objectTypes, objects, objectVariables, enums };
 }
 
-function saveObjectTypes(projectDir, objectTypes, objectVariables) {
-    var doc = normalizeDocument({ version: 1, objectTypes: objectTypes, objectVariables: objectVariables || [] });
+function saveObjectTypes(projectDir, objectTypes, objectVariables, enums) {
+    var doc = normalizeDocument({ version: 1, objectTypes: objectTypes, objectVariables: objectVariables || [], enums: enums || [] });
     writeJsonFile(blobClassesPath(projectDir), doc);
 }
 
@@ -157,32 +177,34 @@ function updateManagedInkFile(project, content) {
     LiveCompiler.setEdited();
 }
 
-function regenerateInk(project, objectTypes, objects, objectVariables) {
-    if( typeof objectVariables === "undefined" ) {
-        var projectDir = project.mainInk.projectDir;
+function regenerateInk(project, objectTypes, objects, objectVariables, enums) {
+    var projectDir = project.mainInk.projectDir;
+    if( typeof objectVariables === "undefined" )
         objectVariables = loadObjectVariables(projectDir);
-    }
-    var content = generateInk(objectTypes, objects, objectVariables);
+    if( typeof enums === "undefined" )
+        enums = loadEnums(projectDir);
+    var content = generateInk(objectTypes, objects, objectVariables, enums);
     updateManagedInkFile(project, content);
 }
 
-function saveAll(project, objectTypes, objects, objectVariables) {
+function saveAll(project, objectTypes, objects, objectVariables, enums) {
     var projectDir = project.mainInk.projectDir;
     if( !projectDir )
         return { success: false, errors: [] };
 
-    if( typeof objectVariables === "undefined" ) {
+    if( typeof objectVariables === "undefined" )
         objectVariables = loadObjectVariables(projectDir);
-    }
+    if( typeof enums === "undefined" )
+        enums = loadEnums(projectDir);
 
     objects = syncObjectsWithTypes(objectTypes, objects);
-    var errors = validateAll(objectTypes, objects);
+    var errors = validateAll(objectTypes, objects, enums);
     if( errors.length > 0 )
         return { success: false, errors: errors, objects: objects };
 
-    saveObjectTypes(projectDir, objectTypes, objectVariables);
+    saveObjectTypes(projectDir, objectTypes, objectVariables, enums);
     saveObjects(projectDir, objects);
-    regenerateInk(project, objectTypes, objects, objectVariables);
+    regenerateInk(project, objectTypes, objects, objectVariables, enums);
     return { success: true, errors: [], objects: objects };
 }
 
@@ -199,7 +221,7 @@ function createObjectsFiles(project) {
         return false;
 
     if( !fs.existsSync(blobClassesPath(projectDir)) )
-        saveObjectTypes(projectDir, [], []);
+        saveObjectTypes(projectDir, [], [], []);
 
     if( !fs.existsSync(blobObjectsPath(projectDir)) )
         saveObjects(projectDir, []);
@@ -207,7 +229,8 @@ function createObjectsFiles(project) {
     var objectTypes = loadObjectTypes(projectDir);
     var objects = loadObjects(projectDir);
     var objectVariables = loadObjectVariables(projectDir);
-    var inkContent = generateInk(objectTypes, objects, objectVariables);
+    var enums = loadEnums(projectDir);
+    var inkContent = generateInk(objectTypes, objects, objectVariables, enums);
 
     if( !fs.existsSync(varsFunctionsPath(projectDir)) )
         fs.writeFileSync(varsFunctionsPath(projectDir), inkContent, "utf8");
@@ -231,6 +254,7 @@ exports.filesReady = filesReady;
 exports.loadObjectTypes = loadObjectTypes;
 exports.loadObjects = loadObjects;
 exports.loadObjectVariables = loadObjectVariables;
+exports.loadEnums = loadEnums;
 exports.loadAll = loadAll;
 exports.saveObjectTypes = saveObjectTypes;
 exports.saveObjects = saveObjects;

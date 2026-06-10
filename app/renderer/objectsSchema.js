@@ -1,12 +1,13 @@
 const _ = require("lodash");
-const { VARIABLE_TYPES, SCHEMA_VERSION } = require("./objectsConstants.js");
+const { VARIABLE_TYPES, SCHEMA_VERSION, ENUM_VALUE_TYPES } = require("./objectsConstants.js");
 const { defaultValueForType } = require("./objectsInkGenerator.js");
 
 function emptyDocument() {
     return {
         version: SCHEMA_VERSION,
         objectTypes: [],
-        objectVariables: []
+        objectVariables: [],
+        enums: []
     };
 }
 
@@ -29,10 +30,17 @@ function normalizeDocument(data) {
         typeName: typeof ov.typeName === "string" ? ov.typeName.trim() : ""
     }));
 
+    var enums = _.isArray(data.enums) ? data.enums : [];
+    enums = enums.map(e => ({
+        name: typeof e.name === "string" ? e.name.trim() : "",
+        value: typeof e.value === "number" ? e.value : (typeof e.value === "string" ? e.value : 0)
+    }));
+
     return {
         version: SCHEMA_VERSION,
         objectTypes: objectTypes,
-        objectVariables: objectVariables
+        objectVariables: objectVariables,
+        enums: enums
     };
 }
 
@@ -180,8 +188,30 @@ function validateObjects(objectTypes, objects) {
     return errors;
 }
 
-function validateAll(objectTypes, objects) {
-    return validateObjectTypes(objectTypes).concat(validateObjects(objectTypes, objects));
+function validateEnums(enums) {
+    var errors = [];
+    var enumNames = {};
+
+    enums.forEach((e, enumIndex) => {
+        if( !e.name || e.name.trim().length === 0 )
+            errors.push({ message: `Enum #${enumIndex + 1}: name is required.`, enumIndex: enumIndex });
+        else if( enumNames[e.name] )
+            errors.push({ message: `Duplicate enum name "${e.name}".`, enumIndex: enumIndex });
+        else
+            enumNames[e.name] = true;
+
+        if( typeof e.value !== "number" && typeof e.value !== "string" )
+            errors.push({ message: `Enum "${e.name || enumIndex + 1}": value must be a number or string.`, enumIndex: enumIndex });
+    });
+
+    return errors;
+}
+
+function validateAll(objectTypes, objects, enums) {
+    var errors = validateObjectTypes(objectTypes).concat(validateObjects(objectTypes, objects));
+    if( enums )
+        errors = errors.concat(validateEnums(enums));
+    return errors;
 }
 
 exports.emptyObjectsDocument = emptyObjectsDocument;
@@ -191,6 +221,7 @@ exports.syncObjectsWithTypes = syncObjectsWithTypes;
 exports.createDefaultValuesForType = createDefaultValuesForType;
 exports.coerceValue = coerceValue;
 exports.validateObjects = validateObjects;
+exports.validateEnums = validateEnums;
 exports.validateAll = validateAll;
 exports.emptyDocument = emptyDocument;
 exports.normalizeDocument = normalizeDocument;

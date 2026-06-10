@@ -34,7 +34,7 @@ var $classesSection = null;
 var $instancesSection = null;
 
 var visible = false;
-var activeTab = "classes";
+var activeTab = "enums";
 var objectTypes = [];
 var objects = [];
 var objectVariables = [];
@@ -44,10 +44,19 @@ var previousTypeName = "";
 var saveTimeout = null;
 var events = {};
 var isCreatingObject = false;
+var enums = [];
+var selectedEnumIndex = -1;
 
 function generateRandomId() {
     return Math.floor(Math.random() * 1000000000);
 }
+
+var $enumsSection = null;
+var $enumList = null;
+var $enumNameInput = null;
+var $enumValueInput = null;
+var $addEnumButton = null;
+var $deleteEnumButton = null;
 
 $(document).ready(() => {
     $objectsEditor = $("#objects-editor");
@@ -70,8 +79,52 @@ $(document).ready(() => {
     $newObjectButton = $objectsEditor.find(".objects-new-object-button");
     $deleteObjectButton = $objectsEditor.find(".objects-delete-object-button");
     $tabItems = $objectsEditor.find(".objects-tab-item");
+    $enumsSection = $objectsEditor.find(".objects-enums-section");
     $classesSection = $objectsEditor.find(".objects-classes-section");
     $instancesSection = $objectsEditor.find(".objects-instances-section");
+    $enumList        = $objectsEditor.find(".objects-enum-list");
+    $enumNameInput   = $objectsEditor.find(".objects-enum-name-input");
+    $enumValueInput  = $objectsEditor.find(".objects-enum-value-input");
+    $addEnumButton   = $objectsEditor.find(".objects-add-enum-button");
+    $deleteEnumButton = $objectsEditor.find(".objects-delete-enum-button");
+
+    $addEnumButton.on("click", () => {
+        enums.push({ name: "NEW_ENUM", value: 0 });
+        selectedEnumIndex = enums.length - 1;
+        render();
+        scheduleSave();
+    });
+
+    $deleteEnumButton.on("click", () => {
+        if (selectedEnumIndex < 0 || selectedEnumIndex >= enums.length) return;
+        enums.splice(selectedEnumIndex, 1);
+        if (selectedEnumIndex >= enums.length) selectedEnumIndex = enums.length - 1;
+        render();
+        scheduleSave();
+    });
+
+    $enumList.on("click", ".objects-enum-item", function() {
+        selectedEnumIndex = parseInt($(this).attr("data-enum-index"), 10);
+        renderEnumEditor();
+        renderEnumList();
+    });
+
+    $enumNameInput.on("input", () => {
+        if (selectedEnumIndex < 0) return;
+        enums[selectedEnumIndex].name = $enumNameInput.val();
+        renderEnumList();
+        renderValidation();
+        scheduleSave();
+    });
+
+    $enumValueInput.on("input", () => {
+        if (selectedEnumIndex < 0) return;
+        var raw = $enumValueInput.val();
+        var asNum = parseFloat(raw);
+        enums[selectedEnumIndex].value = isNaN(asNum) ? raw : asNum;
+        renderValidation();
+        scheduleSave();
+    });
 
     $tabItems.on("click", function() {
         activeTab = $(this).attr("data-tab");
@@ -355,7 +408,7 @@ function saveIfValid() {
     if( !project || !project.mainInk.projectDir )
         return;
 
-    var result = ObjectsManager.saveAll(project, objectTypes, objects, objectVariables);
+    var result = ObjectsManager.saveAll(project, objectTypes, objects, objectVariables, enums);
     if( result.objects )
         objects = result.objects;
     renderValidation(result.errors);
@@ -363,7 +416,7 @@ function saveIfValid() {
 
 function renderValidation(errors) {
     if( typeof errors === "undefined" )
-        errors = validateAll(objectTypes, objects);
+        errors = validateAll(objectTypes, objects, enums);
 
     if( errors.length === 0 ) {
         $validationErrors.empty().hide();
@@ -542,11 +595,15 @@ function renderTabs() {
     $tabItems.removeClass("active");
     $tabItems.filter(`[data-tab="${activeTab}"]`).addClass("active");
 
-    if( activeTab === "classes" ) {
+    $enumsSection.hide();
+    $classesSection.hide();
+    $instancesSection.hide();
+
+    if( activeTab === "enums" ) {
+        $enumsSection.show();
+    } else if( activeTab === "classes" ) {
         $classesSection.show();
-        $instancesSection.hide();
     } else {
-        $classesSection.hide();
         $instancesSection.show();
     }
 }
@@ -576,6 +633,8 @@ function render() {
 
     showMissingState(false, true);
     renderTabs();
+    renderEnumList();
+    renderEnumEditor();
     renderTypeList();
     renderTypeEditor();
     renderInstanceList();
@@ -602,8 +661,10 @@ function refresh() {
         objectTypes = [];
         objects = [];
         objectVariables = [];
+        enums = [];                  // add
         selectedTypeIndex = -1;
         selectedObjectIndex = -1;
+        selectedEnumIndex = -1;      // add
         isCreatingObject = false;
         previousTypeName = "";
         render();
@@ -611,6 +672,8 @@ function refresh() {
     }
 
     var loaded = ObjectsManager.loadAll(project.mainInk.projectDir);
+    enums = _.cloneDeep(loaded.enums || []);
+    if (selectedEnumIndex >= enums.length) selectedEnumIndex = enums.length - 1;
     objectTypes = _.cloneDeep(loaded.objectTypes);
     objects = _.cloneDeep(loaded.objects);
     objectVariables = _.cloneDeep(loaded.objectVariables || []);
@@ -624,8 +687,38 @@ function refresh() {
     previousTypeName = selectedTypeIndex >= 0 && objectTypes[selectedTypeIndex]
         ? objectTypes[selectedTypeIndex].name
         : "";
-
     render();
+}
+
+function renderEnumList() {
+    $enumList.empty();
+    enums.forEach((e, index) => {
+        var label = e.name && e.name.trim() ? e.name : i18n._("(unnamed)");
+        var activeClass = index === selectedEnumIndex ? "active" : "";
+        $enumList.append(
+            `<a class="objects-enum-item nav-group-item ${activeClass}" data-enum-index="${index}">
+                ${label}
+                <span style="font-size:11px;opacity:0.6;margin-left:4px;">= ${e.value}</span>
+            </a>`
+        );
+    });
+}
+
+function renderEnumEditor() {
+    var hasSelection = selectedEnumIndex >= 0 && selectedEnumIndex < enums.length;
+    $enumNameInput.prop("disabled", !hasSelection);
+    $enumValueInput.prop("disabled", !hasSelection);
+    $deleteEnumButton.prop("disabled", !hasSelection);
+
+    if (!hasSelection) {
+        $enumNameInput.val("");
+        $enumValueInput.val("");
+        return;
+    }
+
+    var e = enums[selectedEnumIndex];
+    $enumNameInput.val(e.name);
+    $enumValueInput.val(e.value);
 }
 
 function show() {

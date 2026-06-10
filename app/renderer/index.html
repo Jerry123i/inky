@@ -131,13 +131,40 @@
               <div class="objects-editor-state" style="display:none">
                 <div class="objects-validation-errors hidden"></div>
                 <div class="tab-group objects-tab-group">
-                  <div class="tab-item objects-tab-item active" data-tab="classes">
+                    <div class="tab-item objects-tab-item active" data-tab="enums">
+                        <span class="i18n">Enum Editor</span>
+                    </div>  
+                    <div class="tab-item objects-tab-item active" data-tab="classes">
                     <span class="i18n">Class Creator</span>
                   </div>
                   <div class="tab-item objects-tab-item" data-tab="objects">
                     <span class="i18n">Object Creator</span>
                   </div>
                 </div>
+                  <div class="objects-enums-section" style="display:none">
+                      <div class="objects-columns">
+                          <div class="objects-type-panel">
+                              <h4 class="i18n">Enums</h4>
+                              <div class="objects-enum-list"></div>
+                              <button type="button" class="btn btn-default objects-add-enum-button i18n">Add enum</button>
+                          </div>
+                          <div class="objects-detail-panel">
+                              <div class="objects-panel-header">
+                                  <h4 class="i18n">Enum details</h4>
+                                  <button type="button" class="btn btn-default objects-delete-enum-button" title="Delete enum">
+                                      <span class="icon icon-trash"></span>
+                                  </button>
+                              </div>
+                              <label class="i18n">Name</label>
+                              <input type="text" class="form-control objects-enum-name-input">
+                              <label class="i18n">Value</label>
+                              <input type="text" class="form-control objects-enum-value-input">
+                              <p class="i18n" style="margin-top:8px;font-size:12px;opacity:0.7">
+                                  Generates <code>VAR name = value</code> in ObjectVariablesFunctions.ink
+                              </p>
+                          </div>
+                      </div>
+                  </div>
                 <div class="objects-columns objects-classes-section">
                   <div class="objects-type-panel">
                     <h4 class="i18n">Object Types</h4>
