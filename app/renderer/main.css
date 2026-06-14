@@ -679,12 +679,21 @@ img.issue-icon.warning {
 #objects-editor .objects-instance-item {
   display: block;
   padding: 6px 10px;
+  border-top: 1px solid #eee;
   border-bottom: 1px solid #eee;
+  margin-top: -1px;
   cursor: pointer;
 }
 
 #objects-editor .objects-instance-item.active {
   background: #e8f0fe;
+}
+
+#objects-editor .objects-instance-list .nav-group-title {
+  font-weight: bold;
+  color: #116cd6;
+  padding: 8px 10px 4px 10px;
+  margin: 0;
 }
 
 #objects-editor .objects-instance-name-input,
@@ -750,6 +759,58 @@ img.issue-icon.warning {
   background-color: white;
   color: #116cd6;
   font-weight: bold;
+}
+
+/* Enum Editor Base Styling */
+#objects-editor .objects-enum-category-list {
+  border: 1px solid #CCC;
+  background: white;
+  min-height: 180px;
+  margin-bottom: 8px;
+  overflow: auto;
+}
+
+#objects-editor .objects-enum-cat-item {
+  display: block;
+  padding: 6px 10px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+}
+
+#objects-editor .objects-enum-cat-item:hover {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+#objects-editor .objects-enum-cat-item.active {
+  background: #e8f0fe;
+  color: #116cd6;
+  font-weight: bold;
+}
+
+#objects-editor .objects-enum-items-table {
+  width: 100%;
+  margin-bottom: 12px;
+  border-collapse: collapse;
+}
+
+#objects-editor .objects-enum-items-table th,
+#objects-editor .objects-enum-items-table td {
+  border: 1px solid #ddd;
+  padding: 6px;
+  vertical-align: middle;
+}
+
+#objects-editor .objects-enum-items-table th {
+  background: #f0f0ef;
+  text-align: left;
+}
+
+#objects-editor .objects-enum-empty-hint {
+  opacity: 0.6;
+  margin-top: 8px;
 }
 
 #editor .ace-error {

@@ -197,10 +197,20 @@
     background: #333;
 }
 
-.window.contrast #objects-editor .objects-type-item,
-.window.contrast #objects-editor .objects-instance-item {
+.window.contrast #objects-editor .objects-type-item {
     color: #ccc;
     border-bottom: 1px solid #444;
+}
+
+.window.contrast #objects-editor .objects-instance-item {
+    color: #ccc;
+    border-top: 1px solid #444;
+    border-bottom: 1px solid #444;
+}
+
+.window.contrast #objects-editor .objects-instance-list .nav-group-title {
+    font-weight: bold;
+    color: #3eebff;
 }
 
 .window.contrast #objects-editor .objects-type-item:hover,
@@ -277,4 +287,67 @@
 .window.contrast #objects-editor .objects-tab-item.active {
     background-color: #222;
     color: #3eebff;
+}
+
+/* Enum Editor Contrast Mode */
+.window.contrast #objects-editor .objects-enum-category-list,
+.window.contrast #objects-editor .objects-enum-items-table th,
+.window.contrast #objects-editor .objects-enum-items-table td {
+    background: #282828;
+    border-color: #555;
+    color: #faf2e7;
+}
+
+.window.contrast #objects-editor .objects-enum-items-table th {
+    background: #333;
+}
+
+.window.contrast #objects-editor .objects-enum-cat-item {
+    color: #ccc;
+    border-bottom: 1px solid #444;
+}
+
+.window.contrast #objects-editor .objects-enum-cat-item:hover {
+    background-color: #333;
+    color: #faf2e7;
+}
+
+.window.contrast #objects-editor .objects-enum-cat-item.active {
+    background: #2f3e4c;
+    color: #fff;
+}
+
+/* Modal Window Contrast Mode */
+.window.contrast .modal-content {
+    background-color: #282828;
+    border-color: #555;
+    color: #faf2e7;
+}
+
+.window.contrast .modal-content h4,
+.window.contrast .modal-content label {
+    color: #faf2e7;
+}
+
+.window.contrast .modal-content .form-control {
+    background-color: #1a1a1a;
+    border-color: #888;
+    color: #faf2e7;
+}
+
+.window.contrast .modal-content .form-control:focus {
+    border-color: #3eebff;
+    box-shadow: 0 0 0 3px rgba(62, 235, 255, 0.2);
+}
+
+.window.contrast .modal-content .btn-default {
+    background-color: #282828;
+    background-image: none;
+    border-color: #555;
+    color: #faf2e7;
+}
+
+.window.contrast .modal-content .btn-default:hover {
+    background-color: #333;
+    color: #fff;
 }

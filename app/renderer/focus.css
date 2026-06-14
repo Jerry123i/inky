@@ -194,10 +194,20 @@
     background: #2a2a2a;
 }
 
-.window.focus #objects-editor .objects-type-item,
-.window.focus #objects-editor .objects-instance-item {
+.window.focus #objects-editor .objects-type-item {
     color: #bbb;
     border-bottom: 1px solid #2d2d2d;
+}
+
+.window.focus #objects-editor .objects-instance-item {
+    color: #bbb;
+    border-top: 1px solid #2d2d2d;
+    border-bottom: 1px solid #2d2d2d;
+}
+
+.window.focus #objects-editor .objects-instance-list .nav-group-title {
+    font-weight: bold;
+    color: #faf1c6;
 }
 
 .window.focus #objects-editor .objects-type-item:hover,
@@ -274,4 +284,66 @@
 .window.focus #objects-editor .objects-tab-item.active {
     background-color: #181818;
     color: #faf1c6;
+}
+
+/* Enum Editor Focus Mode */
+.window.focus #objects-editor .objects-enum-category-list,
+.window.focus #objects-editor .objects-enum-items-table th,
+.window.focus #objects-editor .objects-enum-items-table td {
+    background: #222;
+    border-color: #333;
+    color: #faf1c6;
+}
+
+.window.focus #objects-editor .objects-enum-items-table th {
+    background: #2a2a2a;
+}
+
+.window.focus #objects-editor .objects-enum-cat-item {
+    color: #bbb;
+    border-bottom: 1px solid #2d2d2d;
+}
+
+.window.focus #objects-editor .objects-enum-cat-item:hover {
+    background-color: #2b2b2b;
+    color: #faf1c6;
+}
+
+.window.focus #objects-editor .objects-enum-cat-item.active {
+    background: #2f2f2f;
+    color: #fff;
+}
+
+/* Modal Window Focus Mode */
+.window.focus .modal-content {
+    background-color: #222;
+    border-color: #333;
+    color: #faf1c6;
+}
+
+.window.focus .modal-content h4,
+.window.focus .modal-content label {
+    color: #faf1c6;
+}
+
+.window.focus .modal-content .form-control {
+    background-color: #121212;
+    border-color: #444;
+    color: #faf1c6;
+}
+
+.window.focus .modal-content .form-control:focus {
+    border-color: #5f6238;
+    box-shadow: 0 0 0 3px rgba(95, 98, 56, 0.2);
+}
+
+.window.focus .modal-content .btn-default {
+    background-color: #222;
+    border-color: #333;
+    color: #faf1c6;
+}
+
+.window.focus .modal-content .btn-default:hover {
+    background-color: #2b2b2b;
+    color: #fff;
 }

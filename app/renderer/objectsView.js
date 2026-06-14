@@ -44,19 +44,21 @@ var previousTypeName = "";
 var saveTimeout = null;
 var events = {};
 var isCreatingObject = false;
-var enums = [];
-var selectedEnumIndex = -1;
+
+// ---------------------------------------------------------------------------
+// Enum state  (categories with items)
+// ---------------------------------------------------------------------------
+var enums = [];                 // [{ name, items: [{ name, value }] }]
+var selectedEnumCatIndex = -1;  // which category is selected in the left panel
+
+var $enumsSection = null;
+var $enumCategoryList = null;
+var $addEnumCategoryButton = null;
+var $enumDetailPanel = null;
 
 function generateRandomId() {
     return Math.floor(Math.random() * 1000000000);
 }
-
-var $enumsSection = null;
-var $enumList = null;
-var $enumNameInput = null;
-var $enumValueInput = null;
-var $addEnumButton = null;
-var $deleteEnumButton = null;
 
 $(document).ready(() => {
     $objectsEditor = $("#objects-editor");
@@ -82,56 +84,141 @@ $(document).ready(() => {
     $enumsSection = $objectsEditor.find(".objects-enums-section");
     $classesSection = $objectsEditor.find(".objects-classes-section");
     $instancesSection = $objectsEditor.find(".objects-instances-section");
-    $enumList        = $objectsEditor.find(".objects-enum-list");
-    $enumNameInput   = $objectsEditor.find(".objects-enum-name-input");
-    $enumValueInput  = $objectsEditor.find(".objects-enum-value-input");
-    $addEnumButton   = $objectsEditor.find(".objects-add-enum-button");
-    $deleteEnumButton = $objectsEditor.find(".objects-delete-enum-button");
 
-    $addEnumButton.on("click", () => {
-        enums.push({ name: "NEW_ENUM", value: 0 });
-        selectedEnumIndex = enums.length - 1;
-        render();
+    $enumCategoryList = $objectsEditor.find(".objects-enum-category-list");
+    $addEnumCategoryButton = $objectsEditor.find(".objects-add-enum-category-button");
+    $enumDetailPanel = $objectsEditor.find(".objects-enum-detail-panel");
+
+    // -----------------------------------------------------------------------
+    // Enum category events
+    // -----------------------------------------------------------------------
+
+    // Add a new category
+    $addEnumCategoryButton.on("click", () => {
+        enums.push({ name: "NewCategory", items: [] });
+        selectedEnumCatIndex = enums.length - 1;
+        renderEnums();
         scheduleSave();
     });
 
-    $deleteEnumButton.on("click", () => {
-        if (selectedEnumIndex < 0 || selectedEnumIndex >= enums.length) return;
-        enums.splice(selectedEnumIndex, 1);
-        if (selectedEnumIndex >= enums.length) selectedEnumIndex = enums.length - 1;
-        render();
-        scheduleSave();
+    // Select a category
+    $enumCategoryList.on("click", ".objects-enum-cat-item", function() {
+        selectedEnumCatIndex = parseInt($(this).attr("data-cat-index"), 10);
+        renderEnums();
     });
 
-    $enumList.on("click", ".objects-enum-item", function() {
-        selectedEnumIndex = parseInt($(this).attr("data-enum-index"), 10);
-        renderEnumEditor();
-        renderEnumList();
-    });
+    // Rename a category
+    $enumDetailPanel.on("input", ".objects-enum-cat-name-input", function() {
+        var catIndex = selectedEnumCatIndex;
+        if (catIndex < 0 || catIndex >= enums.length) return;
+        var oldName = enums[catIndex].name;
+        var newName = $(this).val();
+        enums[catIndex].name = newName;
 
-    $enumNameInput.on("input", () => {
-        if (selectedEnumIndex < 0) return;
-        enums[selectedEnumIndex].name = $enumNameInput.val();
-        renderEnumList();
+        // Update any object type variables using this enum
+        if (oldName && oldName !== newName) {
+            objectTypes.forEach(type => {
+                type.variables.forEach(variable => {
+                    if (variable.type === oldName) {
+                        variable.type = newName;
+                    }
+                });
+            });
+        }
+
+        // Update the header title and the sidebar item text in real-time
+        $enumDetailPanel.find(".objects-panel-header h4").text(enums[catIndex].name || i18n._("(unnamed)"));
+        
+        var $sidebarItem = $enumCategoryList.find('.objects-enum-cat-item[data-cat-index="' + catIndex + '"]');
+        var itemCountText = ' (' + enums[catIndex].items.length + ' item' + (enums[catIndex].items.length === 1 ? '' : 's') + ')';
+        $sidebarItem.html((enums[catIndex].name || i18n._("(unnamed)")) + '<span style="font-size:11px; opacity:0.6; margin-left:4px;">' + itemCountText + '</span>');
+
         renderValidation();
         scheduleSave();
     });
 
-    $enumValueInput.on("input", () => {
-        if (selectedEnumIndex < 0) return;
-        var raw = $enumValueInput.val();
+    // Delete a category
+    $objectsEditor.on("click", ".objects-delete-enum-cat-button", function() {
+        var catIndex = parseInt($(this).attr("data-cat-index"), 10);
+        if (catIndex < 0 || catIndex >= enums.length) return;
+        
+        var deletedEnumName = enums[catIndex].name;
+        enums.splice(catIndex, 1);
+        if (selectedEnumCatIndex >= enums.length) selectedEnumCatIndex = enums.length - 1;
+        
+        // If an enum type is deleted and it's being used in an object variable,
+        // that object variable should be changed into a normal "number" variable.
+        objectTypes.forEach(type => {
+            type.variables.forEach(variable => {
+                if (variable.type === deletedEnumName) {
+                    variable.type = "number";
+                }
+            });
+        });
+
+        renderEnums();
+        render();
+        scheduleSave();
+    });
+
+    // Add an item to the selected category
+    $objectsEditor.on("click", ".objects-add-enum-item-button", function() {
+        var catIndex = parseInt($(this).attr("data-cat-index"), 10);
+        if (catIndex < 0 || catIndex >= enums.length) return;
+        var nextValue = enums[catIndex].items.length; // default = index
+        enums[catIndex].items.push({ name: "", value: nextValue });
+        renderEnumDetailPanel(catIndex);
+        renderValidation();
+        scheduleSave();
+    });
+
+    // Edit item name
+    $enumDetailPanel.on("input", ".objects-enum-item-name", function() {
+        var catIndex = parseInt($(this).attr("data-cat-index"), 10);
+        var itemIndex = parseInt($(this).attr("data-item-index"), 10);
+        if (catIndex < 0 || catIndex >= enums.length) return;
+        if (itemIndex < 0 || itemIndex >= enums[catIndex].items.length) return;
+        enums[catIndex].items[itemIndex].name = $(this).val();
+        renderValidation();
+        scheduleSave();
+    });
+
+    // Edit item value
+    $enumDetailPanel.on("input", ".objects-enum-item-value", function() {
+        var catIndex = parseInt($(this).attr("data-cat-index"), 10);
+        var itemIndex = parseInt($(this).attr("data-item-index"), 10);
+        if (catIndex < 0 || catIndex >= enums.length) return;
+        if (itemIndex < 0 || itemIndex >= enums[catIndex].items.length) return;
+        var raw = $(this).val();
         var asNum = parseFloat(raw);
-        enums[selectedEnumIndex].value = isNaN(asNum) ? raw : asNum;
+        enums[catIndex].items[itemIndex].value = isNaN(asNum) ? raw : asNum;
         renderValidation();
         scheduleSave();
     });
 
+    // Delete an item
+    $enumDetailPanel.on("click", ".objects-remove-enum-item-button", function() {
+        var catIndex = parseInt($(this).attr("data-cat-index"), 10);
+        var itemIndex = parseInt($(this).attr("data-item-index"), 10);
+        if (catIndex < 0 || catIndex >= enums.length) return;
+        enums[catIndex].items.splice(itemIndex, 1);
+        renderEnumDetailPanel(catIndex);
+        renderValidation();
+        scheduleSave();
+    });
+
+    // -----------------------------------------------------------------------
+    // Tab events
+    // -----------------------------------------------------------------------
     $tabItems.on("click", function() {
         activeTab = $(this).attr("data-tab");
         isCreatingObject = false;
         render();
     });
 
+    // -----------------------------------------------------------------------
+    // Create files
+    // -----------------------------------------------------------------------
     $createFilesButton.on("click", () => {
         var project = InkProject.currentProject;
         if( !project || !project.mainInk.projectDir )
@@ -141,6 +228,9 @@ $(document).ready(() => {
             refresh();
     });
 
+    // -----------------------------------------------------------------------
+    // Object type events
+    // -----------------------------------------------------------------------
     $addTypeButton.on("click", () => {
         objectTypes.push({ name: "newType", variables: [{name: "id", type: "number"}] });
         selectedTypeIndex = objectTypes.length - 1;
@@ -280,13 +370,13 @@ $(document).ready(() => {
         if( selectedTypeIndex < 0 )
             return;
 
+        var type = objectTypes[selectedTypeIndex];
         if (
             type.variables[variableIndex] &&
             type.variables[variableIndex].name === "id"
         )
             return;
-        
-        var type = objectTypes[selectedTypeIndex];
+
         var removedName = type.variables[variableIndex].name;
         type.variables.splice(variableIndex, 1);
 
@@ -299,6 +389,9 @@ $(document).ready(() => {
         scheduleSave();
     });
 
+    // -----------------------------------------------------------------------
+    // Object instance events
+    // -----------------------------------------------------------------------
     $newObjectButton.on("click", () => {
         isCreatingObject = true;
         selectedObjectIndex = -1;
@@ -393,6 +486,9 @@ $(document).ready(() => {
     });
 });
 
+// ---------------------------------------------------------------------------
+// Save / validation
+// ---------------------------------------------------------------------------
 function scheduleSave() {
     if( saveTimeout )
         clearTimeout(saveTimeout);
@@ -423,16 +519,126 @@ function renderValidation(errors) {
         return;
     }
 
-    var items = errors.map(error => `<li>${error.message}</li>`).join("");
-    $validationErrors.html(`<ul>${items}</ul>`).show();
+    var items = errors.map(error => "<li>" + error.message + "</li>").join("");
+    $validationErrors.html("<ul>" + items + "</ul>").show();
 }
 
+// ---------------------------------------------------------------------------
+// Enum rendering
+// ---------------------------------------------------------------------------
+
+/**
+ * Render the left-hand category list.
+ */
+function renderEnumCategoryList() {
+    $enumCategoryList.empty();
+    enums.forEach(function(cat, catIndex) {
+        var isActive = catIndex === selectedEnumCatIndex;
+        var activeClass = isActive ? "active" : "";
+        var label = cat.name && cat.name.trim() ? cat.name : i18n._("(unnamed)");
+        var itemCountText = ' (' + cat.items.length + ' item' + (cat.items.length === 1 ? '' : 's') + ')';
+        
+        $enumCategoryList.append(
+            '<a class="objects-enum-cat-item nav-group-item ' + activeClass + '" data-cat-index="' + catIndex + '">' +
+            label +
+            '<span style="font-size:11px; opacity:0.6; margin-left:4px;">' + itemCountText + '</span>' +
+            '</a>'
+        );
+    });
+}
+
+/**
+ * Render the right-hand items panel for the currently selected category.
+ */
+function renderEnumDetailPanel(catIndex) {
+    $enumDetailPanel.empty();
+
+    if (catIndex < 0 || catIndex >= enums.length) {
+        $enumDetailPanel.append('<p class="objects-enum-empty-hint i18n">Select or create an enum category.</p>');
+        return;
+    }
+
+    var cat = enums[catIndex];
+
+    // Header row with category name and delete button
+    var $header = $('<div class="objects-panel-header"></div>');
+    $header.append('<h4 class="i18n">' + (cat.name || i18n._("(unnamed)")) + '</h4>');
+    var $deleteCatBtn = $('<button type="button" class="btn btn-default objects-delete-enum-cat-button" data-cat-index="' + catIndex + '" title="Delete category"><span class="icon icon-trash"></span></button>');
+    $header.append($deleteCatBtn);
+    $enumDetailPanel.append($header);
+
+    // Name label and input for editing the name
+    $enumDetailPanel.append('<label class="i18n">Category Name</label>');
+    var $nameInput = $('<input type="text" class="form-control objects-enum-cat-name-input" spellcheck="false">').val(cat.name);
+    $enumDetailPanel.append($nameInput);
+
+    // Items Section Header
+    var $itemsHeader = $('<div class="objects-variables-header" style="margin-top:15px;"></div>');
+    $itemsHeader.append('<h5 class="i18n">Items</h5>');
+    var $addItemBtn = $('<button type="button" class="btn btn-default objects-add-enum-item-button i18n" data-cat-index="' + catIndex + '">Add item</button>');
+    $itemsHeader.append($addItemBtn);
+    $enumDetailPanel.append($itemsHeader);
+
+    if (cat.items.length === 0) {
+        $enumDetailPanel.append('<p class="objects-enum-empty-hint i18n" style="margin-top:8px;opacity:0.6">No items yet. Click "Add item" to start.</p>');
+        return;
+    }
+
+    // Items table
+    var $table = $('<table class="objects-enum-items-table"><thead><tr><th class="i18n">Name</th><th class="i18n">Value</th><th></th></tr></thead></table>');
+    var $tbody = $('<tbody></tbody>');
+
+    cat.items.forEach(function(item, itemIndex) {
+        var $row = $('<tr></tr>');
+
+        var $nameTd = $('<td></td>');
+        var $nameInput = $('<input type="text" class="form-control objects-enum-item-name" spellcheck="false">')
+            .attr('data-cat-index', catIndex)
+            .attr('data-item-index', itemIndex)
+            .val(item.name)
+            .attr('placeholder', 'item_name');
+        $nameTd.append($nameInput);
+
+        var $valueTd = $('<td></td>');
+        var $valueInput = $('<input type="text" class="form-control objects-enum-item-value">')
+            .attr('data-cat-index', catIndex)
+            .attr('data-item-index', itemIndex)
+            .val(item.value);
+        $valueTd.append($valueInput);
+
+        var $actionTd = $('<td></td>');
+        var $removeBtn = $('<button type="button" class="btn btn-default objects-remove-enum-item-button" title="Remove item">')
+            .attr('data-cat-index', catIndex)
+            .attr('data-item-index', itemIndex)
+            .html('<span class="icon icon-trash"></span>');
+        $actionTd.append($removeBtn);
+
+        $row.append($nameTd).append($valueTd).append($actionTd);
+        $tbody.append($row);
+    });
+
+    $table.append($tbody);
+    $enumDetailPanel.append($table);
+
+    // Ink preview hint
+    var $hint = $('<p style="margin-top:8px;font-size:11px;opacity:0.6">Each item generates <code>CONST name = value</code> in ObjectVariablesFunctions.ink</p>');
+    $enumDetailPanel.append($hint);
+}
+
+function renderEnums() {
+    renderEnumCategoryList();
+    renderEnumDetailPanel(selectedEnumCatIndex);
+}
+
+// ---------------------------------------------------------------------------
+// Type / object rendering (unchanged)
+// ---------------------------------------------------------------------------
 function renderTypeList() {
     $typeList.empty();
     objectTypes.forEach((type, index) => {
         var label = type.name && type.name.trim().length > 0 ? type.name : i18n._("(unnamed)");
         var activeClass = index === selectedTypeIndex ? "active" : "";
-        $typeList.append(`<a class="objects-type-item nav-group-item ${activeClass}" data-type-index="${index}">${label}</a>`);
+        $typeList.append('<a class="objects-type-item nav-group-item ' + activeClass + '" data-type-index="' + index + '">' + label + '</a>');
     });
 }
 
@@ -451,21 +657,22 @@ function renderTypeEditor() {
     var type = objectTypes[selectedTypeIndex];
     $typeNameInput.val(type.name);
 
+    var allTypes = [].concat(VARIABLE_TYPES);
+    enums.forEach(e => {
+        if (e.name && e.name.trim() && allTypes.indexOf(e.name) === -1) {
+            allTypes.push(e.name);
+        }
+    });
+
     $variablesBody.empty();
     type.variables.forEach((variable, variableIndex) => {
         if (variable.name === "id")
             return;
-        var typeOptions = VARIABLE_TYPES.map(t =>
-            `<option value="${t}" ${variable.type === t ? "selected" : ""}>${t}</option>`
+        var typeOptions = allTypes.map(t =>
+            '<option value="' + t + '"' + (variable.type === t ? " selected" : "") + '>' + t + '</option>'
         ).join("");
 
-        var $row = $(`
-            <tr data-variable-index="${variableIndex}">
-                <td><input type="text" class="form-control objects-variable-name" data-previous-name=""></td>
-                <td><select class="form-control objects-variable-type">${typeOptions}</select></td>
-                <td><button type="button" class="btn btn-default objects-remove-variable-button">${i18n._("Remove")}</button></td>
-            </tr>
-        `);
+        var $row = $('<tr data-variable-index="' + variableIndex + '"><td><input type="text" class="form-control objects-variable-name" data-previous-name=""></td><td><select class="form-control objects-variable-type">' + typeOptions + '</select></td><td><button type="button" class="btn btn-default objects-remove-variable-button">' + i18n._("Remove") + '</button></td></tr>');
         $row.find(".objects-variable-name").val(variable.name).attr("data-previous-name", variable.name);
         $variablesBody.append($row);
     });
@@ -473,21 +680,52 @@ function renderTypeEditor() {
 
 function renderInstanceList() {
     $instanceList.empty();
+
+    // Group objects by their typeName
+    var grouped = {};
     objects.forEach((object, index) => {
-        var label = object.name && object.name.trim().length > 0 ? object.name : i18n._("(unnamed)");
-        var objectId = object.values && object.values.id !== undefined ? object.values.id : "";
-        var typeSuffix = object.typeName ? ` (${object.typeName})` : "";
-        var activeClass = index === selectedObjectIndex ? "active" : "";
-        $instanceList.append(`
-            <a class="objects-instance-item nav-group-item ${activeClass}"
-               data-object-index="${index}">
-               ${label}
-               <span style="font-size:11px; opacity:0.6; margin-left:4px;">
-                   #${objectId}
-               </span>
-               ${typeSuffix}
-            </a>
-        `);
+        var typeName = object.typeName && object.typeName.trim().length > 0 ? object.typeName : i18n._("(untyped)");
+        if (!grouped[typeName]) {
+            grouped[typeName] = [];
+        }
+        grouped[typeName].push({ object: object, originalIndex: index });
+    });
+
+    // Sort group names alphabetically, but put untyped at the end
+    var typeNames = Object.keys(grouped).sort((a, b) => {
+        var untypedLabel = i18n._("(untyped)");
+        if (a === untypedLabel) return 1;
+        if (b === untypedLabel) return -1;
+        return a.localeCompare(b);
+    });
+
+    typeNames.forEach(typeName => {
+        // Render left-aligned section header for this object type group
+        $instanceList.append('<h5 class="nav-group-title">' + typeName + '</h5>');
+
+        // Sort items inside the group alphabetically
+        var groupObjects = grouped[typeName];
+        groupObjects.sort((a, b) => {
+            var nameA = a.object.name || "";
+            var nameB = b.object.name || "";
+            return nameA.localeCompare(nameB);
+        });
+
+        // Render each object inside the group
+        groupObjects.forEach(item => {
+            var object = item.object;
+            var index = item.originalIndex;
+            var label = object.name && object.name.trim().length > 0 ? object.name : i18n._("(unnamed)");
+            var objectId = object.values && object.values.id !== undefined ? object.values.id : "";
+            var activeClass = index === selectedObjectIndex ? "active" : "";
+            
+            $instanceList.append(
+                '<a class="objects-instance-item nav-group-item ' + activeClass + '" data-object-index="' + index + '">' +
+                label +
+                '<span style="font-size:11px; opacity:0.6; margin-left:4px;">#' + objectId + '</span>' +
+                '</a>'
+            );
+        });
     });
 }
 
@@ -500,17 +738,16 @@ function renderInstanceEditor() {
         $objectsEditor.find(".objects-instance-values-table").hide();
 
         $instanceTypeSelect.empty();
-        $instanceTypeSelect.append(`<option value="" disabled selected>${i18n._("Select a type...")}</option>`);
+        $instanceTypeSelect.append('<option value="" disabled selected>' + i18n._("Select a type...") + '</option>');
         objectTypes.forEach(type => {
             var label = type.name && type.name.trim().length > 0 ? type.name : i18n._("(unnamed)");
-            $instanceTypeSelect.append(`<option value="${type.name}">${label}</option>`);
+            $instanceTypeSelect.append('<option value="' + type.name + '">' + label + '</option>');
         });
 
         $instanceTypeSelect.prop("disabled", false);
         return;
     }
 
-    // Default state: show everything
     $instanceNameInput.show();
     $instanceNameInput.prev('label').show();
     $deleteObjectButton.show();
@@ -519,14 +756,14 @@ function renderInstanceEditor() {
 
     var hasSelection = selectedObjectIndex >= 0 && selectedObjectIndex < objects.length;
     $instanceNameInput.prop("disabled", !hasSelection);
-    $instanceTypeSelect.prop("disabled", true); // Type of the object cannot be changed in the editor
+    $instanceTypeSelect.prop("disabled", true);
     $deleteObjectButton.prop("disabled", !hasSelection);
     $newObjectButton.prop("disabled", objectTypes.length === 0);
 
     $instanceTypeSelect.empty();
     objectTypes.forEach(type => {
         var label = type.name && type.name.trim().length > 0 ? type.name : i18n._("(unnamed)");
-        $instanceTypeSelect.append(`<option value="${type.name}">${label}</option>`);
+        $instanceTypeSelect.append('<option value="' + type.name + '">' + label + '</option>');
     });
 
     if( !hasSelection ) {
@@ -551,13 +788,20 @@ function renderInstanceEditor() {
         var value = object.values.hasOwnProperty(variable.name)
             ? object.values[variable.name]
             : coerceValue(null, variable.type);
-        var $row = $(`<tr data-variable-name="${variable.name}"><td>${variable.name} <span class="objects-variable-type-label">(${variable.type})</span></td><td></td></tr>`);
+        var $row = $('<tr data-variable-name="' + variable.name + '"><td>' + variable.name + ' <span class="objects-variable-type-label">(' + variable.type + ')</span></td><td></td></tr>');
         var $valueCell = $row.find("td").last();
 
-        if( variable.type === "boolean" ) {
-            $valueCell.html(`<input type="checkbox" class="objects-instance-value" ${value ? "checked" : ""}>`);
+        var foundEnum = enums.find(e => e.name === variable.type);
+        if (foundEnum) {
+            var enumOptions = ['<option value="">' + i18n._("(none)") + '</option>'];
+            foundEnum.items.forEach(item => {
+                enumOptions.push('<option value="' + item.name + '"' + (value === item.name ? " selected" : "") + '>' + item.name + ' (' + item.value + ')</option>');
+            });
+            $valueCell.html('<select class="form-control objects-instance-value">' + enumOptions.join("") + '</select>');
+        } else if( variable.type === "boolean" ) {
+            $valueCell.html('<input type="checkbox" class="objects-instance-value"' + (value ? " checked" : "") + '>');
         } else if( variable.type === "number" ) {
-            $valueCell.html(`<input type="number" class="form-control objects-instance-value">`);
+            $valueCell.html('<input type="number" class="form-control objects-instance-value">');
             $valueCell.find("input").val(value);
         } else if( variable.type === "divert" ) {
             var targets = [];
@@ -576,13 +820,13 @@ function renderInstanceEditor() {
                 }
                 targets = Array.from(targetsSet).sort();
             }
-            var targetOptions = [`<option value="">${i18n._("(none)")}</option>`];
+            var targetOptions = ['<option value="">' + i18n._("(none)") + '</option>'];
             targets.forEach(target => {
-                targetOptions.push(`<option value="${target}" ${value === target ? "selected" : ""}>${target}</option>`);
+                targetOptions.push('<option value="' + target + '"' + (value === target ? " selected" : "") + '>' + target + '</option>');
             });
-            $valueCell.html(`<select class="form-control objects-instance-value">${targetOptions.join("")}</select>`);
+            $valueCell.html('<select class="form-control objects-instance-value">' + targetOptions.join("") + '</select>');
         } else {
-            $valueCell.html(`<input type="text" class="form-control objects-instance-value">`);
+            $valueCell.html('<input type="text" class="form-control objects-instance-value">');
             $valueCell.find("input").val(value);
         }
 
@@ -593,7 +837,7 @@ function renderInstanceEditor() {
 function renderTabs() {
     if( !$tabItems ) return;
     $tabItems.removeClass("active");
-    $tabItems.filter(`[data-tab="${activeTab}"]`).addClass("active");
+    $tabItems.filter('[data-tab="' + activeTab + '"]').addClass("active");
 
     $enumsSection.hide();
     $classesSection.hide();
@@ -633,8 +877,7 @@ function render() {
 
     showMissingState(false, true);
     renderTabs();
-    renderEnumList();
-    renderEnumEditor();
+    renderEnums();
     renderTypeList();
     renderTypeEditor();
     renderInstanceList();
@@ -661,10 +904,10 @@ function refresh() {
         objectTypes = [];
         objects = [];
         objectVariables = [];
-        enums = [];                  // add
+        enums = [];
         selectedTypeIndex = -1;
         selectedObjectIndex = -1;
-        selectedEnumIndex = -1;      // add
+        selectedEnumCatIndex = -1;
         isCreatingObject = false;
         previousTypeName = "";
         render();
@@ -673,7 +916,7 @@ function refresh() {
 
     var loaded = ObjectsManager.loadAll(project.mainInk.projectDir);
     enums = _.cloneDeep(loaded.enums || []);
-    if (selectedEnumIndex >= enums.length) selectedEnumIndex = enums.length - 1;
+    if (selectedEnumCatIndex >= enums.length) selectedEnumCatIndex = enums.length - 1;
     objectTypes = _.cloneDeep(loaded.objectTypes);
     objects = _.cloneDeep(loaded.objects);
     objectVariables = _.cloneDeep(loaded.objectVariables || []);
@@ -688,37 +931,6 @@ function refresh() {
         ? objectTypes[selectedTypeIndex].name
         : "";
     render();
-}
-
-function renderEnumList() {
-    $enumList.empty();
-    enums.forEach((e, index) => {
-        var label = e.name && e.name.trim() ? e.name : i18n._("(unnamed)");
-        var activeClass = index === selectedEnumIndex ? "active" : "";
-        $enumList.append(
-            `<a class="objects-enum-item nav-group-item ${activeClass}" data-enum-index="${index}">
-                ${label}
-                <span style="font-size:11px;opacity:0.6;margin-left:4px;">= ${e.value}</span>
-            </a>`
-        );
-    });
-}
-
-function renderEnumEditor() {
-    var hasSelection = selectedEnumIndex >= 0 && selectedEnumIndex < enums.length;
-    $enumNameInput.prop("disabled", !hasSelection);
-    $enumValueInput.prop("disabled", !hasSelection);
-    $deleteEnumButton.prop("disabled", !hasSelection);
-
-    if (!hasSelection) {
-        $enumNameInput.val("");
-        $enumValueInput.val("");
-        return;
-    }
-
-    var e = enums[selectedEnumIndex];
-    $enumNameInput.val(e.name);
-    $enumValueInput.val(e.value);
 }
 
 function show() {

@@ -15,12 +15,15 @@ function normalizeDocument(data) {
     if( !data || typeof data !== "object" )
         return emptyDocument();
 
+    var enums = normalizeEnumCategories(_.isArray(data.enums) ? data.enums : []);
+    var enumNames = enums.map(e => e.name);
+
     var objectTypes = _.isArray(data.objectTypes) ? data.objectTypes : [];
     objectTypes = objectTypes.map(type => ({
         name: typeof type.name === "string" ? type.name.trim() : "",
         variables: _.isArray(type.variables) ? type.variables.map(v => ({
             name: typeof v.name === "string" ? v.name.trim() : "",
-            type: VARIABLE_TYPES.indexOf(v.type) !== -1 ? v.type : "string"
+            type: (VARIABLE_TYPES.indexOf(v.type) !== -1 || enumNames.indexOf(v.type) !== -1) ? v.type : "number"
         })) : []
     }));
 
@@ -28,12 +31,6 @@ function normalizeDocument(data) {
     objectVariables = objectVariables.map(ov => ({
         name: typeof ov.name === "string" ? ov.name.trim() : "",
         typeName: typeof ov.typeName === "string" ? ov.typeName.trim() : ""
-    }));
-
-    var enums = _.isArray(data.enums) ? data.enums : [];
-    enums = enums.map(e => ({
-        name: typeof e.name === "string" ? e.name.trim() : "",
-        value: typeof e.value === "number" ? e.value : (typeof e.value === "string" ? e.value : 0)
     }));
 
     return {
@@ -44,31 +41,54 @@ function normalizeDocument(data) {
     };
 }
 
-function validateObjectTypes(objectTypes) {
+function normalizeEnumItem(item, idx) {
+    return {
+        name: typeof item.name === "string" ? item.name.trim() : "",
+        value: typeof item.value === "number" ? item.value
+            : typeof item.value === "string" ? item.value
+                : idx   
+    };
+}
+
+function normalizeEnumCategories(raw) {
+    if (!_.isArray(raw)) return [];
+
+    return raw.map(function(cat) {
+        return {
+            name: typeof cat.name === "string" ? cat.name.trim() : "",
+            items: _.isArray(cat.items)
+                ? cat.items.map(function(item, idx) { return normalizeEnumItem(item, idx); })
+                : []
+        };
+    });
+}
+
+function validateObjectTypes(objectTypes, enums) {
     var errors = [];
     var typeNames = {};
+    var enumNames = enums ? enums.map(e => e.name) : [];
 
     objectTypes.forEach((type, typeIndex) => {
-        var typeLabel = type.name || `#${typeIndex + 1}`;
+        var typeLabel = type.name || ("#" + (typeIndex + 1));
 
         if( !type.name || type.name.trim().length === 0 )
             errors.push({ message: "Object type name is required.", typeIndex: typeIndex });
         else if( typeNames[type.name] )
-            errors.push({ message: `Duplicate object type name "${type.name}".`, typeIndex: typeIndex });
+            errors.push({ message: "Duplicate object type name \"" + type.name + "\".", typeIndex: typeIndex });
         else
             typeNames[type.name] = true;
 
         var variableNames = {};
         type.variables.forEach((variable, variableIndex) => {
             if( !variable.name || variable.name.trim().length === 0 )
-                errors.push({ message: `Variable name is required in "${typeLabel}".`, typeIndex: typeIndex, variableIndex: variableIndex });
+                errors.push({ message: "Variable name is required in \"" + typeLabel + "\".", typeIndex: typeIndex, variableIndex: variableIndex });
             else if( variableNames[variable.name] )
-                errors.push({ message: `Duplicate variable "${variable.name}" in "${typeLabel}".`, typeIndex: typeIndex, variableIndex: variableIndex });
+                errors.push({ message: "Duplicate variable \"" + variable.name + "\" in \"" + typeLabel + "\".", typeIndex: typeIndex, variableIndex: variableIndex });
             else
                 variableNames[variable.name] = true;
 
-            if( VARIABLE_TYPES.indexOf(variable.type) === -1 )
-                errors.push({ message: `Invalid type for variable "${variable.name}" in "${typeLabel}".`, typeIndex: typeIndex, variableIndex: variableIndex });
+            if( VARIABLE_TYPES.indexOf(variable.type) === -1 && enumNames.indexOf(variable.type) === -1 )
+                errors.push({ message: "Invalid type for variable \"" + variable.name + "\" in \"" + typeLabel + "\".", typeIndex: typeIndex, variableIndex: variableIndex });
         });
     });
 
@@ -155,31 +175,40 @@ function createDefaultValuesForType(type) {
     return values;
 }
 
-function validateObjects(objectTypes, objects) {
+function validateObjects(objectTypes, objects, enums) {
     var errors = [];
     var objectNames = {};
 
     objects.forEach((object, objectIndex) => {
-        var objectLabel = object.name || `#${objectIndex + 1}`;
+        var objectLabel = object.name || ("#" + (objectIndex + 1));
 
         if( !object.name || object.name.trim().length === 0 )
             errors.push({ message: "Object name is required.", objectIndex: objectIndex });
         else if( objectNames[object.name] )
-            errors.push({ message: `Duplicate object name "${object.name}".`, objectIndex: objectIndex });
+            errors.push({ message: "Duplicate object name \"" + object.name + "\".", objectIndex: objectIndex });
         else
             objectNames[object.name] = true;
 
         if( !object.typeName || object.typeName.trim().length === 0 )
-            errors.push({ message: `Object type is required for "${objectLabel}".`, objectIndex: objectIndex });
+            errors.push({ message: "Object type is required for \"" + objectLabel + "\".", objectIndex: objectIndex });
         else {
             var type = objectTypes.find(t => t.name === object.typeName);
             if( !type )
-                errors.push({ message: `Unknown object type "${object.typeName}" for "${objectLabel}".`, objectIndex: objectIndex });
+                errors.push({ message: "Unknown object type \"" + object.typeName + "\" for \"" + objectLabel + "\".", objectIndex: objectIndex });
             else {
                 type.variables.forEach(variable => {
                     var value = object.values[variable.name];
                     if( variable.type === "number" && value !== undefined && isNaN(Number(value)) )
-                        errors.push({ message: `"${variable.name}" must be a number on object "${objectLabel}".`, objectIndex: objectIndex });
+                        errors.push({ message: "\"" + variable.name + "\" must be a number on object \"" + objectLabel + "\".", objectIndex: objectIndex });
+
+                    // Validate custom enum type value is defined in the enum
+                    var foundEnum = enums && enums.find(e => e.name === variable.type);
+                    if (foundEnum && value) {
+                        var hasItem = foundEnum.items.some(item => item.name === value);
+                        if (!hasItem) {
+                            errors.push({ message: "\"" + variable.name + "\" has invalid enum value \"" + value + "\" for enum type \"" + variable.type + "\" on object \"" + objectLabel + "\".", objectIndex: objectIndex });
+                        }
+                    }
                 });
             }
         }
@@ -190,25 +219,34 @@ function validateObjects(objectTypes, objects) {
 
 function validateEnums(enums) {
     var errors = [];
-    var enumNames = {};
+    var categoryNames = {};
 
-    enums.forEach((e, enumIndex) => {
-        if( !e.name || e.name.trim().length === 0 )
-            errors.push({ message: `Enum #${enumIndex + 1}: name is required.`, enumIndex: enumIndex });
-        else if( enumNames[e.name] )
-            errors.push({ message: `Duplicate enum name "${e.name}".`, enumIndex: enumIndex });
+    enums.forEach(function(cat, catIndex) {
+        var catLabel = cat.name && cat.name.trim() ? cat.name : ("#" + (catIndex + 1));
+
+        if (!cat.name || cat.name.trim().length === 0)
+            errors.push({ message: "Enum category #" + (catIndex + 1) + ": name is required.", enumIndex: catIndex });
+        else if (categoryNames[cat.name])
+            errors.push({ message: "Duplicate enum category name \"" + cat.name + "\".", enumIndex: catIndex });
         else
-            enumNames[e.name] = true;
+            categoryNames[cat.name] = true;
 
-        if( typeof e.value !== "number" && typeof e.value !== "string" )
-            errors.push({ message: `Enum "${e.name || enumIndex + 1}": value must be a number or string.`, enumIndex: enumIndex });
+        if (!_.isArray(cat.items)) return;
+
+        cat.items.forEach(function(item, itemIndex) {
+            if (!item.name || item.name.trim().length === 0)
+                errors.push({ message: "Item #" + (itemIndex + 1) + " in \"" + catLabel + "\": name is required.", enumIndex: catIndex, enumItemIndex: itemIndex });
+
+            if (typeof item.value !== "number" && typeof item.value !== "string")
+                errors.push({ message: "Item \"" + (item.name || (itemIndex + 1)) + "\" in \"" + catLabel + "\": value must be a number or string.", enumIndex: catIndex, enumItemIndex: itemIndex });
+        });
     });
 
     return errors;
 }
 
 function validateAll(objectTypes, objects, enums) {
-    var errors = validateObjectTypes(objectTypes).concat(validateObjects(objectTypes, objects));
+    var errors = validateObjectTypes(objectTypes, enums).concat(validateObjects(objectTypes, objects, enums));
     if( enums )
         errors = errors.concat(validateEnums(enums));
     return errors;
@@ -222,6 +260,7 @@ exports.createDefaultValuesForType = createDefaultValuesForType;
 exports.coerceValue = coerceValue;
 exports.validateObjects = validateObjects;
 exports.validateEnums = validateEnums;
+exports.normalizeEnumCategories = normalizeEnumCategories;
 exports.validateAll = validateAll;
 exports.emptyDocument = emptyDocument;
 exports.normalizeDocument = normalizeDocument;

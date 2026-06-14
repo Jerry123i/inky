@@ -12,7 +12,7 @@ function defaultValueForType(type) {
     return "";
 }
 
-function formatInkValue(value, type) {
+function formatInkValue(value, type, enums) {
     if( type === "boolean" )
         return value ? "true" : "false";
     if( type === "number" )
@@ -20,13 +20,21 @@ function formatInkValue(value, type) {
     if( type === "divert" ) {
         if( !value )
             return '""';
-        return `-> ${value}`;
+        return "-> " + value;
     }
-    return `"${escapeInkString(value)}"`;
+    
+    // Check if the type is a custom enum category name
+    if (enums && enums.some(e => e.name === type)) {
+        if (!value)
+            return "0";
+        return String(value);
+    }
+
+    return '"' + escapeInkString(value) + '"';
 }
 
 function inkVariableName(objectName, variableName) {
-    return `${objectName}_${variableName}`;
+    return objectName + "_" + variableName;
 }
 
 function capitalize(str) {
@@ -43,74 +51,84 @@ function generateInk(objectTypes, objects, objectVariables, enums) {
     ];
 
     // 1. Generate Enum Declarations
-    if( enums.length > 0 ) {
+    // enums is now an array of categories: { name, items: [{ name, value }] }
+    // Each item becomes: CONST itemName = value
+    var hasEnums = enums.length > 0 && enums.some(function(cat) {
+        return cat.items && cat.items.length > 0;
+    });
+    if( hasEnums ) {
         lines.push("// === Enums ===");
-        enums.forEach(e => {
-            var val = typeof e.value === "string"
-                ? `"${escapeInkString(e.value)}"`
-                : String(Number(e.value) || 0);
-            lines.push(`CONST ${e.name} = ${val}`);
+        enums.forEach(function(cat) {
+            if (!cat.items || cat.items.length === 0) return;
+            lines.push("// -- " + cat.name + " --");
+            cat.items.forEach(function(item) {
+                var val = typeof item.value === "string"
+                    ? '"' + escapeInkString(item.value) + '"'
+                    : String(Number(item.value) || 0);
+                lines.push("CONST " + item.name + " = " + val);
+            });
         });
         lines.push("");
     }
 
     // 2. Generate Object Declarations
-    objects.forEach((object, index) => {
-        var type = objectTypes.find(t => t.name === object.typeName);
+    objects.forEach(function(object) {
+        var type = objectTypes.find(function(t) { return t.name === object.typeName; });
         if( !type )
             return;
 
-        type.variables.forEach(variable => {
+        type.variables.forEach(function(variable) {
             var value = object.values.hasOwnProperty(variable.name)
                 ? object.values[variable.name]
                 : defaultValueForType(variable.type);
             var varName = inkVariableName(object.name, variable.name);
-            lines.push(`VAR ${varName} = ${formatInkValue(value, variable.type)}`);
+            lines.push("VAR " + varName + " = " + formatInkValue(value, variable.type, enums));
         });
 
         lines.push("");
     });
 
     // 3. Generate Getters and Setters for Object Variables
-    objectVariables.forEach(objVar => {
-        var type = objectTypes.find(t => t.name === objVar.typeName);
+    objectVariables.forEach(function(objVar) {
+        var type = objectTypes.find(function(t) { return t.name === objVar.typeName; });
         if( !type )
             return;
 
         lines.push("// ==========================================");
-        lines.push(`// Object Variable: ${objVar.name} (${objVar.typeName})`);
+        lines.push("// Object Variable: " + objVar.name + " (" + objVar.typeName + ")");
         lines.push("// ==========================================");
         lines.push("");
 
         // Find all objects of this type
-        var matchingObjects = objects.map((obj, idx) => ({ obj, idx })).filter(item => item.obj.typeName === type.name);
+        var matchingObjects = objects.map(function(obj, idx) { return { obj: obj, idx: idx }; })
+            .filter(function(item) { return item.obj.typeName === type.name; });
 
-        type.variables.forEach(variable => {
+        type.variables.forEach(function(variable) {
             if (variable.name === "id")
                 return;
 
             var capVarName = capitalize(variable.name);
-            var getterName = `${objVar.name}Get${capVarName}`;
-            var setterName = `${objVar.name}Set${capVarName}`;
+            var getterName = objVar.name + "Get" + capVarName;
+            var setterName = objVar.name + "Set" + capVarName;
 
             // Getter
-            lines.push(`=== function ${getterName}()`);
-            lines.push(`{ ${objVar.name}:`);
-            matchingObjects.forEach(item => {
+            lines.push("=== function " + getterName + "()");
+            lines.push("{ " + objVar.name + ":");
+            matchingObjects.forEach(function(item) {
                 var objVarName = inkVariableName(item.obj.name, variable.name);
-                lines.push(`- ${item.obj.name}_id: ~ return ${objVarName}`);
+                lines.push("- " + item.obj.name + "_id: ~ return " + objVarName);
             });
-            var defaultVal = formatInkValue(defaultValueForType(variable.type), variable.type);
-            lines.push(`- else: ~ return ${defaultVal}`);
+            var defaultVal = formatInkValue(defaultValueForType(variable.type), variable.type, enums);
+            lines.push("- else: ~ return " + defaultVal);
             lines.push("}");
             lines.push("");
 
             // Setter
-            lines.push(`=== function ${setterName}(val)`);
-            lines.push(`{ ${objVar.name}:`);
-            matchingObjects.forEach(item => {
+            lines.push("=== function " + setterName + "(val)");
+            lines.push("{ " + objVar.name + ":");
+            matchingObjects.forEach(function(item) {
                 var objVarName = inkVariableName(item.obj.name, variable.name);
-                lines.push(`- ${item.obj.name}_id: ~ ${objVarName} = val`);
+                lines.push("- " + item.obj.name + "_id: ~ " + objVarName + " = val");
             });
             lines.push("}");
             lines.push("");
