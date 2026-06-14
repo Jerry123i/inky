@@ -810,8 +810,15 @@ function renderInstanceEditor() {
                 InkProject.currentProject.files.forEach(file => {
                     if( file.symbols ) {
                         var fileTargets = file.symbols.getCachedDivertTargets();
+                        var fileFunctions = file.symbols.getCachedFunctionTargets
+                            ? file.symbols.getCachedFunctionTargets()
+                            : new Set();
+
                         if( fileTargets ) {
-                            fileTargets.forEach(t => targetsSet.add(t));
+                            fileTargets.forEach(t => {
+                                if( !fileFunctions.has(t) )
+                                    targetsSet.add(t);
+                            });
                         }
                     }
                 });

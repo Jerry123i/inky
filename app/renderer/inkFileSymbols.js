@@ -67,6 +67,7 @@ InkFileSymbols.prototype.parse = function() {
     var variables = new Set();
     var externals = new Set();
     var vocabWords = new Set();
+    var functionTargets = new Set();
 
     var it = new TokenIterator(session, 0, 0);
 
@@ -122,6 +123,8 @@ InkFileSymbols.prototype.parse = function() {
                 });
                 symbolStack.push(symbol);
                 divertTargets.add(symbolName);
+                if( isfunc )
+                    functionTargets.add(symbolName);
                 isfunc = false
             }
             else if( varType ) {
@@ -191,6 +194,7 @@ InkFileSymbols.prototype.parse = function() {
     this.globalDictionaryStyleTags = globalDictionaryStyleTags;
 
     this.divertTargets = divertTargets;
+    this.functionTargets = functionTargets;
     this.variables = variables;
     this.externals = externals;
     this.vocabWords = vocabWords;
@@ -304,6 +308,10 @@ InkFileSymbols.prototype.getLastIncludeRow = function() {
 
 InkFileSymbols.prototype.getCachedDivertTargets = function() {
     return this.divertTargets;
+}
+
+InkFileSymbols.prototype.getCachedFunctionTargets = function() {
+    return this.functionTargets;
 }
 
 InkFileSymbols.prototype.getCachedVariables = function() {
