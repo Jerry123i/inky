@@ -157,11 +157,22 @@ function syncObjectsWithTypes(objectTypes, objects) {
     });
 }
 
+function normalizeColorHex(value) {
+    var cleaned = String(value == null ? "" : value).replace(/^#/, "").trim().toLowerCase();
+    if( /^[0-9a-f]{6}$/.test(cleaned) )
+        return cleaned;
+    if( /^[0-9a-f]{3}$/.test(cleaned) )
+        return cleaned[0] + cleaned[0] + cleaned[1] + cleaned[1] + cleaned[2] + cleaned[2];
+    return "000000";
+}
+
 function coerceValue(value, type) {
     if( type === "boolean" )
         return !!value;
     if( type === "number" )
         return Number(value) || 0;
+    if( type === "color" )
+        return normalizeColorHex(value);
     return value == null ? "" : String(value);
 }
 
@@ -200,6 +211,12 @@ function validateObjects(objectTypes, objects, enums) {
                     var value = object.values[variable.name];
                     if( variable.type === "number" && value !== undefined && isNaN(Number(value)) )
                         errors.push({ message: "\"" + variable.name + "\" must be a number on object \"" + objectLabel + "\".", objectIndex: objectIndex });
+
+                    if( variable.type === "color" && value !== undefined && value !== "" ) {
+                        var colorHex = String(value).replace(/^#/, "");
+                        if( !/^[0-9a-fA-F]{6}$/.test(colorHex) )
+                            errors.push({ message: "\"" + variable.name + "\" must be a 6-digit hex color on object \"" + objectLabel + "\".", objectIndex: objectIndex });
+                    }
 
                     // Validate custom enum type value is defined in the enum
                     var foundEnum = enums && enums.find(e => e.name === variable.type);
@@ -258,6 +275,7 @@ exports.parseObjectsJson = parseObjectsJson;
 exports.syncObjectsWithTypes = syncObjectsWithTypes;
 exports.createDefaultValuesForType = createDefaultValuesForType;
 exports.coerceValue = coerceValue;
+exports.normalizeColorHex = normalizeColorHex;
 exports.validateObjects = validateObjects;
 exports.validateEnums = validateEnums;
 exports.normalizeEnumCategories = normalizeEnumCategories;

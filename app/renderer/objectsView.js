@@ -516,6 +516,29 @@ $(document).ready(() => {
         $(this).closest(".objects-media-value-wrap").removeClass("objects-media-value-wrap--picker-open");
     });
 
+    $instanceValuesBody.on("blur", ".objects-color-hex-input", function() {
+        var variableName = $(this).closest("tr").attr("data-variable-name");
+        if( selectedObjectIndex < 0 )
+            return;
+
+        var object = objects[selectedObjectIndex];
+        var type = objectTypes.find(t => t.name === object.typeName);
+        if( !type )
+            return;
+
+        var variable = type.variables.find(v => v.name === variableName);
+        if( !variable || variable.type !== "color" )
+            return;
+
+        var hex = coerceValue($(this).val(), "color");
+        object.values[variableName] = hex;
+        var $wrap = $(this).closest(".objects-color-value-wrap");
+        $wrap.find(".objects-color-hex-input").val(hex);
+        $wrap.find(".objects-color-picker").val("#" + hex);
+        renderValidation();
+        scheduleSave();
+    });
+
     $instanceValuesBody.on("input change", ".objects-instance-value", function() {
         var variableName = $(this).closest("tr").attr("data-variable-name");
         if( selectedObjectIndex < 0 )
@@ -534,7 +557,19 @@ $(document).ready(() => {
             object.values[variableName] = $(this).is(":checked");
         else if( variable.type === "number" )
             object.values[variableName] = $(this).val();
-        else
+        else if( variable.type === "color" ) {
+            if( $(this).hasClass("objects-color-picker") ) {
+                var pickerHex = String($(this).val() || "").replace(/^#/, "").toLowerCase();
+                object.values[variableName] = pickerHex;
+                $(this).closest(".objects-color-value-wrap").find(".objects-color-hex-input").val(pickerHex);
+            } else if( $(this).hasClass("objects-color-hex-input") ) {
+                var rawHex = String($(this).val() || "").replace(/^#/, "").toLowerCase();
+                if( /^[0-9a-f]{6}$/.test(rawHex) ) {
+                    object.values[variableName] = rawHex;
+                    $(this).closest(".objects-color-value-wrap").find(".objects-color-picker").val("#" + rawHex);
+                }
+            }
+        } else
             object.values[variableName] = $(this).val();
 
         renderValidation();
@@ -987,6 +1022,13 @@ function renderInstanceEditor() {
                 targetOptions.push('<option value="' + target + '"' + (value === target ? " selected" : "") + '>' + target + '</option>');
             });
             $valueCell.html('<select class="form-control objects-instance-value">' + targetOptions.join("") + '</select>');
+        } else if( variable.type === "color" ) {
+            var hexValue = coerceValue(value, "color");
+            var $wrap = $('<div class="objects-color-value-wrap"></div>');
+            var $colorInput = $('<input type="color" class="objects-color-picker objects-instance-value">').val("#" + hexValue);
+            var $hexInput = $('<input type="text" class="form-control objects-color-hex-input objects-instance-value" maxlength="6" spellcheck="false" placeholder="000000">').val(hexValue);
+            $wrap.append($colorInput).append($hexInput);
+            $valueCell.append($wrap);
         } else if( variable.type === "image" || variable.type === "audio" ) {
             var hasUnmatchedReference = value && !isRegisteredMediaReference(value, variable.type);
 

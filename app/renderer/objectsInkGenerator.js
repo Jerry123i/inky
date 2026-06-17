@@ -9,6 +9,8 @@ function defaultValueForType(type) {
         return false;
     if( type === "number" )
         return 0;
+    if( type === "color" )
+        return "000000";
     return "";
 }
 

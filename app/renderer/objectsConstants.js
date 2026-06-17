@@ -4,7 +4,7 @@ exports.VARS_FUNCTIONS_FILENAME = "ObjectVariablesFunctions.ink";
 exports.VARS_FUNCTIONS_STUB = "// Managed by Inky Objects. Do not edit manually.\n";
 exports.FILES_MANAGER_FILENAME = "FilesManager.ink";
 exports.BLOB_FILES_FILENAME = "Ink_blob_files.json";
-exports.VARIABLE_TYPES = ["boolean", "number", "string", "divert", "image", "audio"];
+exports.VARIABLE_TYPES = ["boolean", "number", "string", "color", "divert", "image", "audio"];
 exports.ENUM_VALUE_TYPES = ["number", "string"];
 exports.SCHEMA_VERSION = 1;
  

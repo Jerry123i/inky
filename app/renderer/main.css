@@ -786,6 +786,30 @@ img.issue-icon.warning {
   display: block;
 }
 
+#objects-editor .objects-color-value-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#objects-editor .objects-color-picker {
+  width: 36px;
+  height: 28px;
+  padding: 2px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#objects-editor .objects-color-hex-input {
+  flex: 1;
+  min-width: 0;
+  font-family: monospace;
+  text-transform: lowercase;
+}
+
 #objects-editor .objects-tab-group {
   display: inline-flex;
   background-color: #f0f0ef;
