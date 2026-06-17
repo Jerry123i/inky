@@ -138,7 +138,21 @@ function generateInk(objectTypes, objects, objectVariables, enums) {
     return lines.join("\n").replace(/\n+$/, "") + "\n";
 }
 
+function generateFilesInk(files) {
+    files = files || [];
+    var lines = [
+        "// Managed by Inky Files Manager. Do not edit manually.",
+        ""
+    ];
+    files.forEach(function(file) {
+        if (!file.varName) return;
+        lines.push("VAR " + file.varName + ' = "' + escapeInkString(file.fileName) + '"');
+    });
+    return lines.join("\n").replace(/\n+$/, "") + "\n";
+}
+
 exports.defaultValueForType = defaultValueForType;
 exports.formatInkValue = formatInkValue;
 exports.inkVariableName = inkVariableName;
 exports.generateInk = generateInk;
+exports.generateFilesInk = generateFilesInk;

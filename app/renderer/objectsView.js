@@ -32,12 +32,15 @@ var $deleteObjectButton = null;
 var $tabItems = null;
 var $classesSection = null;
 var $instancesSection = null;
+var $filesSection = null;
+var $filesBody = null;
 
 var visible = false;
 var activeTab = "enums";
 var objectTypes = [];
 var objects = [];
 var objectVariables = [];
+var files = [];
 var selectedTypeIndex = -1;
 var selectedObjectIndex = -1;
 var previousTypeName = "";
@@ -58,6 +61,47 @@ var $enumDetailPanel = null;
 
 function generateRandomId() {
     return Math.floor(Math.random() * 1000000000);
+}
+
+var SOUND_EXTENSIONS = [".mp3", ".wav", ".ogg", ".aac", ".flac", ".m4a", ".wma"];
+
+function isRegisteredSoundFile(originalName) {
+    if( !originalName )
+        return false;
+    var ext = originalName.substring(originalName.lastIndexOf(".")).toLowerCase();
+    return SOUND_EXTENSIONS.indexOf(ext) !== -1;
+}
+
+function registeredFilesForMediaType(mediaType) {
+    return files.filter(file => {
+        if( !file.varName || !file.varName.trim() || !file.fileName )
+            return false;
+        var isSound = isRegisteredSoundFile(file.originalName);
+        return mediaType === "audio" ? isSound : !isSound;
+    });
+}
+
+function isRegisteredMediaReference(value, mediaType) {
+    if( !value )
+        return true;
+    return registeredFilesForMediaType(mediaType).some(file => file.fileName === value);
+}
+
+function buildMediaFileOptions(mediaType, selectedValue, options) {
+    options = options || {};
+    var html = [];
+    if( options.placeholder ) {
+        html.push('<option value="" disabled selected>' + options.placeholder + '</option>');
+    }
+    html.push('<option value=""' + (!options.placeholder && !selectedValue ? " selected" : "") + '>' + i18n._("(none)") + '</option>');
+    registeredFilesForMediaType(mediaType).forEach(file => {
+        var refName = file.fileName || "";
+        html.push(
+            '<option value="' + refName + '"' + (selectedValue === refName ? " selected" : "") + '>'
+            + file.varName + '</option>'
+        );
+    });
+    return html.join("");
 }
 
 $(document).ready(() => {
@@ -84,6 +128,8 @@ $(document).ready(() => {
     $enumsSection = $objectsEditor.find(".objects-enums-section");
     $classesSection = $objectsEditor.find(".objects-classes-section");
     $instancesSection = $objectsEditor.find(".objects-instances-section");
+    $filesSection = $objectsEditor.find(".objects-files-section");
+    $filesBody = $objectsEditor.find(".objects-files-body");
 
     $enumCategoryList = $objectsEditor.find(".objects-enum-category-list");
     $addEnumCategoryButton = $objectsEditor.find(".objects-add-enum-category-button");
@@ -460,6 +506,16 @@ $(document).ready(() => {
         scheduleSave();
     });
 
+    $instanceValuesBody.on("click", ".objects-media-value-change-button", function() {
+        var $wrap = $(this).closest(".objects-media-value-wrap");
+        $wrap.addClass("objects-media-value-wrap--picker-open");
+        $wrap.find(".objects-media-value-select").focus();
+    });
+
+    $instanceValuesBody.on("blur", ".objects-media-value-select", function() {
+        $(this).closest(".objects-media-value-wrap").removeClass("objects-media-value-wrap--picker-open");
+    });
+
     $instanceValuesBody.on("input change", ".objects-instance-value", function() {
         var variableName = $(this).closest("tr").attr("data-variable-name");
         if( selectedObjectIndex < 0 )
@@ -482,8 +538,90 @@ $(document).ready(() => {
             object.values[variableName] = $(this).val();
 
         renderValidation();
+        if( (variable.type === "image" || variable.type === "audio") && $(this).hasClass("objects-media-value-select") )
+            renderInstanceEditor();
         scheduleSave();
     });
+
+    // -----------------------------------------------------------------------
+    // File Manager events
+    // -----------------------------------------------------------------------
+    var $dropzone = $objectsEditor.find(".objects-files-dropzone");
+    
+    $dropzone.on("dragover dragenter", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        $dropzone.addClass("dragover");
+    });
+    
+    $dropzone.on("dragleave dragend drop", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        $dropzone.removeClass("dragover");
+    });
+    
+    $dropzone.on("drop", (e) => {
+        var dt = e.originalEvent.dataTransfer;
+        var droppedFiles = dt.files;
+        if (droppedFiles && droppedFiles.length > 0) {
+            var addedAny = false;
+            for (var i = 0; i < droppedFiles.length; i++) {
+                var file = droppedFiles[i];
+                if (isImageOrSound(file)) {
+                    var baseName = file.name;
+                    var lastDot = baseName.lastIndexOf('.');
+                    var nameWithoutExtension = lastDot !== -1 ? baseName.substring(0, lastDot) : baseName;
+                    
+                    if (files.some(f => f.originalName === baseName)) {
+                        continue; // Already exists
+                    }
+                    
+                    var defaultVarName = sanitizeVarName(nameWithoutExtension);
+                    var varName = defaultVarName;
+                    var counter = 1;
+                    while (files.some(f => f.varName === varName)) {
+                        varName = defaultVarName + "_" + counter;
+                        counter++;
+                    }
+                    
+                    files.push({
+                        id: generateRandomId(),
+                        varName: varName,
+                        fileName: nameWithoutExtension,
+                        originalName: baseName
+                    });
+                    addedAny = true;
+                }
+            }
+            if (addedAny) {
+                renderFiles();
+                renderInstanceEditor();
+                renderValidation();
+                scheduleSave();
+            }
+        }
+    });
+
+    function isImageOrSound(file) {
+        var type = file.type;
+        if (type && (type.startsWith("image/") || type.startsWith("audio/"))) {
+            return true;
+        }
+        var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        var allowedExts = [
+            ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp", ".tiff",
+            ".mp3", ".wav", ".ogg", ".aac", ".flac", ".m4a", ".wma"
+        ];
+        return allowedExts.indexOf(ext) !== -1;
+    }
+
+    function sanitizeVarName(name) {
+        var sanitized = name.replace(/[^a-zA-Z0-9_]/g, "_");
+        if (!/^[a-zA-Z_]/.test(sanitized)) {
+            sanitized = "_" + sanitized;
+        }
+        return sanitized;
+    }
 });
 
 // ---------------------------------------------------------------------------
@@ -504,15 +642,32 @@ function saveIfValid() {
     if( !project || !project.mainInk.projectDir )
         return;
 
-    var result = ObjectsManager.saveAll(project, objectTypes, objects, objectVariables, enums);
+    var result = ObjectsManager.saveAll(project, objectTypes, objects, objectVariables, enums, files);
     if( result.objects )
         objects = result.objects;
     renderValidation(result.errors);
 }
 
 function renderValidation(errors) {
-    if( typeof errors === "undefined" )
+    if( typeof errors === "undefined" ) {
         errors = validateAll(objectTypes, objects, enums);
+        var filesSeen = new Set();
+        files.forEach((file, index) => {
+            var label = "File #" + (index + 1) + " (" + (file.originalName || "unnamed") + ")";
+            if (!file.varName || !file.varName.trim()) {
+                errors.push({ message: label + ": Ink VAR Name cannot be empty." });
+            } else {
+                var trimmed = file.varName.trim();
+                if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) {
+                    errors.push({ message: label + ": Ink VAR Name \"" + trimmed + "\" must be a valid identifier (only letters, numbers, and underscores, cannot start with a number)." });
+                } else if (filesSeen.has(trimmed)) {
+                    errors.push({ message: label + ": Duplicate Ink VAR Name \"" + trimmed + "\"." });
+                } else {
+                    filesSeen.add(trimmed);
+                }
+            }
+        });
+    }
 
     if( errors.length === 0 ) {
         $validationErrors.empty().hide();
@@ -832,12 +987,89 @@ function renderInstanceEditor() {
                 targetOptions.push('<option value="' + target + '"' + (value === target ? " selected" : "") + '>' + target + '</option>');
             });
             $valueCell.html('<select class="form-control objects-instance-value">' + targetOptions.join("") + '</select>');
+        } else if( variable.type === "image" || variable.type === "audio" ) {
+            var hasUnmatchedReference = value && !isRegisteredMediaReference(value, variable.type);
+
+            if( hasUnmatchedReference ) {
+                var $wrap = $('<div class="objects-media-value-wrap objects-media-value-wrap--invalid"></div>');
+                var $current = $('<div class="objects-media-value-current"></div>');
+                $current.append($('<span class="objects-media-value-label"></span>').text(value));
+                $current.append(
+                    $('<button type="button" class="btn btn-default objects-media-value-change-button"></button>')
+                        .text(i18n._("Change"))
+                );
+                $wrap.append($current);
+                $wrap.append(
+                    $('<select class="form-control objects-instance-value objects-media-value-select"></select>')
+                        .html(buildMediaFileOptions(variable.type, "", { placeholder: i18n._("Select a file...") }))
+                );
+                $valueCell.append($wrap);
+
+                var $warning = $('<span class="objects-instance-value-warning"><img class="issue-icon warning" src="img/warning-icon.png" alt=""/></span>');
+                $warning.attr("title", i18n._('Reference "%s" was not found in registered files.').replace("%s", value));
+                $row.find("td").first().append(" ").append($warning);
+            } else {
+                $valueCell.html(
+                    '<select class="form-control objects-instance-value">'
+                    + buildMediaFileOptions(variable.type, value)
+                    + '</select>'
+                );
+            }
         } else {
             $valueCell.html('<input type="text" class="form-control objects-instance-value">');
             $valueCell.find("input").val(value);
         }
 
         $instanceValuesBody.append($row);
+    });
+}
+
+function renderFiles() {
+    if (!$filesBody) return;
+    $filesBody.empty();
+
+    if (files.length === 0) {
+        $filesBody.append('<tr><td colspan="4" style="text-align:center; opacity:0.6;" class="i18n">No files added yet. Drag and drop files here to track them.</td></tr>');
+        return;
+    }
+
+    files.forEach((file, index) => {
+        var $row = $('<tr></tr>');
+        
+        // Delete button
+        var $deleteBtn = $('<button type="button" class="btn btn-default" title="Delete file"><span class="icon icon-trash"></span></button>');
+        $deleteBtn.on("click", () => {
+            files.splice(index, 1);
+            renderFiles();
+            renderInstanceEditor();
+            renderValidation();
+            scheduleSave();
+        });
+        
+        // Icon
+        var isSound = isRegisteredSoundFile(file.originalName);
+        var iconClass = isSound ? "icon-note" : "icon-picture";
+        var $iconSpan = $('<span class="icon ' + iconClass + '" style="font-size: 16px; opacity: 0.7;"></span>');
+
+        // Ink VAR Name input
+        var $varNameInput = $('<input type="text" class="form-control objects-file-var-name">').val(file.varName);
+        $varNameInput.on("input change", function() {
+            file.varName = $(this).val();
+            renderInstanceEditor();
+            renderValidation();
+            scheduleSave();
+        });
+        
+        // Original File Name (read-only label)
+        var $originalNameCell = $('<span></span>').text(file.originalName);
+
+        var $tdDel = $('<td style="text-align: center; vertical-align: middle;"></td>').append($deleteBtn);
+        var $tdIcon = $('<td style="text-align: center; vertical-align: middle;"></td>').append($iconSpan);
+        var $tdVar = $('<td></td>').append($varNameInput);
+        var $tdOrig = $('<td></td>').append($originalNameCell);
+
+        $row.append($tdDel).append($tdIcon).append($tdVar).append($tdOrig);
+        $filesBody.append($row);
     });
 }
 
@@ -849,13 +1081,16 @@ function renderTabs() {
     $enumsSection.hide();
     $classesSection.hide();
     $instancesSection.hide();
+    if ($filesSection) $filesSection.hide();
 
     if( activeTab === "enums" ) {
         $enumsSection.show();
     } else if( activeTab === "classes" ) {
         $classesSection.show();
-    } else {
+    } else if( activeTab === "objects" ) {
         $instancesSection.show();
+    } else if( activeTab === "files" ) {
+        if ($filesSection) $filesSection.show();
     }
 }
 
@@ -889,6 +1124,7 @@ function render() {
     renderTypeEditor();
     renderInstanceList();
     renderInstanceEditor();
+    renderFiles();
     renderValidation();
 }
 
@@ -912,6 +1148,7 @@ function refresh() {
         objects = [];
         objectVariables = [];
         enums = [];
+        files = [];
         selectedTypeIndex = -1;
         selectedObjectIndex = -1;
         selectedEnumCatIndex = -1;
@@ -927,6 +1164,7 @@ function refresh() {
     objectTypes = _.cloneDeep(loaded.objectTypes);
     objects = _.cloneDeep(loaded.objects);
     objectVariables = _.cloneDeep(loaded.objectVariables || []);
+    files = _.cloneDeep(loaded.files || []);
 
     isCreatingObject = false;
 

@@ -347,3 +347,24 @@
     background-color: #2b2b2b;
     color: #fff;
 }
+
+/* File Manager Focus Theme */
+.window.focus #objects-editor .objects-files-dropzone {
+    background: #121212;
+    border-color: #444;
+    color: #888;
+}
+.window.focus #objects-editor .objects-files-dropzone.dragover {
+    border-color: #5f6238;
+    background-color: #222;
+    color: #fff;
+}
+.window.focus #objects-editor .objects-files-table th,
+.window.focus #objects-editor .objects-files-table td {
+    background: #121212;
+    border-color: #444;
+    color: #faf1c6;
+}
+.window.focus #objects-editor .objects-files-table th {
+    background: #222;
+}

@@ -349,3 +349,24 @@
     background-color: #3a3a3a;
     color: #fff;
 }
+
+/* File Manager Dark Theme */
+.window.dark #objects-editor .objects-files-dropzone {
+    background: #1e1e1e;
+    border-color: #444;
+    color: #888;
+}
+.window.dark #objects-editor .objects-files-dropzone.dragover {
+    border-color: #6d9e8e;
+    background-color: #2a2a2a;
+    color: #fff;
+}
+.window.dark #objects-editor .objects-files-table th,
+.window.dark #objects-editor .objects-files-table td {
+    background: #1e1e1e;
+    border-color: #444;
+    color: #ccc;
+}
+.window.dark #objects-editor .objects-files-table th {
+    background: #282828;
+}

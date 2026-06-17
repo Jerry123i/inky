@@ -351,3 +351,24 @@
     background-color: #333;
     color: #fff;
 }
+
+/* File Manager Contrast Theme */
+.window.contrast #objects-editor .objects-files-dropzone {
+    background: #1e1e1e;
+    border-color: #555;
+    color: #faf2e7;
+}
+.window.contrast #objects-editor .objects-files-dropzone.dragover {
+    border-color: #3eebff;
+    background-color: #282828;
+    color: #fff;
+}
+.window.contrast #objects-editor .objects-files-table th,
+.window.contrast #objects-editor .objects-files-table td {
+    background: #1e1e1e;
+    border-color: #555;
+    color: #faf2e7;
+}
+.window.contrast #objects-editor .objects-files-table th {
+    background: #282828;
+}

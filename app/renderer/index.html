@@ -125,7 +125,7 @@
                     <div id="objects-editor" class="hidden">
                         <div class="objects-missing-state">
                             <p class="objects-save-project-message i18n" style="display:none">Save the project first to use Objects.</p>
-                            <p class="i18n">Objects requires Ink_blob_classes.json, Ink_blob_objects.json, and ObjectVariablesFunctions.ink in your project.</p>
+                            <p class="i18n">Objects requires Ink_blob_classes.json, Ink_blob_objects.json, ObjectVariablesFunctions.ink, Ink_blob_files.json, and FilesManager.ink in your project.</p>
                             <button type="button" class="btn btn-primary create-objects-files-button i18n">Create files</button>
                         </div>
                         <div class="objects-editor-state" style="display:none">
@@ -139,6 +139,9 @@
                                 </div>
                                 <div class="tab-item objects-tab-item" data-tab="objects">
                                     <span class="i18n">Object Creator</span>
+                                </div>
+                                <div class="tab-item objects-tab-item" data-tab="files">
+                                    <span class="i18n">File Manager</span>
                                 </div>
                             </div>
                             <div class="objects-enums-section" style="display:none">
@@ -215,6 +218,24 @@
                                             <tbody class="objects-instance-values-body"></tbody>
                                         </table>
                                     </div>
+                                </div>
+                            </div>
+                            <div class="objects-files-section" style="display:none">
+                                <h4 class="i18n">Recorded Files</h4>
+                                <table class="objects-files-table">
+                                    <thead>
+                                    <tr>
+                                        <th style="width: 40px;"></th>
+                                        <th style="width: 40px;"></th>
+                                        <th class="i18n">Ink VAR Name</th>
+                                        <th class="i18n">Original File</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody class="objects-files-body"></tbody>
+                                </table>
+                                <div class="objects-files-dropzone" style="margin-top: 16px;">
+                                    <span class="icon icon-plus"></span>
+                                    <p class="i18n">Drag & drop image/sound files here</p>
                                 </div>
                             </div>
                         </div>

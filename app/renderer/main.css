@@ -724,6 +724,68 @@ img.issue-icon.warning {
   font-size: 9pt;
 }
 
+#objects-editor .objects-instance-value-warning {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  vertical-align: middle;
+  cursor: help;
+}
+
+#objects-editor .objects-instance-value-warning img.issue-icon.warning {
+  display: block;
+}
+
+#objects-editor .objects-media-value-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#objects-editor .objects-media-value-current {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+#objects-editor .objects-media-value-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 4px 8px;
+  background: #f0f0ef;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  color: #333;
+  font-size: 9pt;
+  line-height: 1.4;
+}
+
+#objects-editor .objects-media-value-change-button {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  font-size: 8pt;
+  min-height: auto;
+  line-height: 1.4;
+}
+
+#objects-editor .objects-media-value-select {
+  display: none;
+  flex: 1;
+  min-width: 0;
+}
+
+#objects-editor .objects-media-value-wrap--picker-open .objects-media-value-current {
+  display: none;
+}
+
+#objects-editor .objects-media-value-wrap--picker-open .objects-media-value-select {
+  display: block;
+}
+
 #objects-editor .objects-tab-group {
   display: inline-flex;
   background-color: #f0f0ef;
@@ -1290,4 +1352,46 @@ img.issue-icon.warning {
         transform: scale(1);
         opacity: 1;
     }
+}
+
+/* File Manager Styling */
+#objects-editor .objects-files-dropzone {
+  border: 2px dashed #ccc;
+  border-radius: 6px;
+  padding: 40px 20px;
+  text-align: center;
+  background: #fafafa;
+  color: #666;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  margin-top: 8px;
+}
+#objects-editor .objects-files-dropzone.dragover {
+  border-color: #116cd6;
+  background-color: #eef5fc;
+  color: #116cd6;
+}
+#objects-editor .objects-files-dropzone span.icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+#objects-editor .objects-files-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+#objects-editor .objects-files-table th,
+#objects-editor .objects-files-table td {
+  border: 1px solid #ddd;
+  padding: 6px;
+  vertical-align: middle;
+}
+#objects-editor .objects-files-table th {
+  background: #f0f0ef;
+  text-align: left;
 }
