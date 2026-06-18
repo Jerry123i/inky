@@ -78,7 +78,6 @@ InkProject.prototype.createInkFile = function(anyPath, isBrandNew, loadErrorCall
     });
 
     this.files.push(inkFile);
-    ObjectsManager.markHiddenSystemFiles(this);
 
     this.sortFileList();
     
@@ -169,8 +168,6 @@ InkProject.prototype.refreshIncludes = function() {
 
         this.sortFileList();
     }
-
-    ObjectsManager.markHiddenSystemFiles(this);
 
     NavView.setFiles(this.mainInk, this.files);
     EditorView.setFiles(this.files);

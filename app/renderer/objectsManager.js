@@ -4,7 +4,6 @@ const {
     BLOB_CLASSES_FILENAME,
     BLOB_OBJECTS_FILENAME,
     VARS_FUNCTIONS_FILENAME,
-    VARS_FUNCTIONS_STUB,
     FILES_MANAGER_FILENAME,
     BLOB_FILES_FILENAME
 } = require("./objectsConstants.js");
@@ -280,13 +279,6 @@ function saveAll(project, objectTypes, objects, objectVariables, enums, files) {
     return { success: true, errors: [], objects: objects };
 }
 
-function markHiddenSystemFiles(project) {
-    project.files.forEach(file => {
-        if( file.relativePath() === VARS_FUNCTIONS_FILENAME || file.relativePath() === FILES_MANAGER_FILENAME )
-            file.isHiddenSystemFile = true;
-    });
-}
-
 function createObjectsFiles(project) {
     var projectDir = project.mainInk.projectDir;
     if( !projectDir )
@@ -334,7 +326,6 @@ function createObjectsFiles(project) {
         project.mainInk.addIncludeLine(FILES_MANAGER_FILENAME);
 
     project.refreshIncludes();
-    markHiddenSystemFiles(project);
     return true;
 }
 
@@ -353,6 +344,5 @@ exports.saveAll = saveAll;
 exports.regenerateInk = regenerateInk;
 exports.regenerateFilesInk = regenerateFilesInk;
 exports.createObjectsFiles = createObjectsFiles;
-exports.markHiddenSystemFiles = markHiddenSystemFiles;
 exports.VARS_FUNCTIONS_FILENAME = VARS_FUNCTIONS_FILENAME;
 exports.FILES_MANAGER_FILENAME = FILES_MANAGER_FILENAME;
