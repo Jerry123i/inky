@@ -34,6 +34,11 @@ var $classesSection = null;
 var $instancesSection = null;
 var $filesSection = null;
 var $filesBody = null;
+var $objectVariablesSection = null;
+var $objectVarList = null;
+var $objectVarDetailPanel = null;
+
+var selectedObjectVarIndex = -1;
 
 var visible = false;
 var activeTab = "enums";
@@ -131,6 +136,10 @@ $(document).ready(() => {
     $filesSection = $objectsEditor.find(".objects-files-section");
     $filesBody = $objectsEditor.find(".objects-files-body");
 
+    $objectVariablesSection = $objectsEditor.find(".objects-objectvariables-section");
+    $objectVarList = $objectsEditor.find(".objects-objectvar-list");
+    $objectVarDetailPanel = $objectsEditor.find(".objects-objectvar-detail-panel");
+
     $enumCategoryList = $objectsEditor.find(".objects-enum-category-list");
     $addEnumCategoryButton = $objectsEditor.find(".objects-add-enum-category-button");
     $enumDetailPanel = $objectsEditor.find(".objects-enum-detail-panel");
@@ -174,7 +183,7 @@ $(document).ready(() => {
 
         // Update the header title and the sidebar item text in real-time
         $enumDetailPanel.find(".objects-panel-header h4").text(enums[catIndex].name || i18n._("(unnamed)"));
-        
+
         var $sidebarItem = $enumCategoryList.find('.objects-enum-cat-item[data-cat-index="' + catIndex + '"]');
         var itemCountText = ' (' + enums[catIndex].items.length + ' item' + (enums[catIndex].items.length === 1 ? '' : 's') + ')';
         $sidebarItem.html((enums[catIndex].name || i18n._("(unnamed)")) + '<span style="font-size:11px; opacity:0.6; margin-left:4px;">' + itemCountText + '</span>');
@@ -187,11 +196,11 @@ $(document).ready(() => {
     $objectsEditor.on("click", ".objects-delete-enum-cat-button", function() {
         var catIndex = parseInt($(this).attr("data-cat-index"), 10);
         if (catIndex < 0 || catIndex >= enums.length) return;
-        
+
         var deletedEnumName = enums[catIndex].name;
         enums.splice(catIndex, 1);
         if (selectedEnumCatIndex >= enums.length) selectedEnumCatIndex = enums.length - 1;
-        
+
         // If an enum type is deleted and it's being used in an object variable,
         // that object variable should be changed into a normal "number" variable.
         objectTypes.forEach(type => {
@@ -582,19 +591,19 @@ $(document).ready(() => {
     // File Manager events
     // -----------------------------------------------------------------------
     var $dropzone = $objectsEditor.find(".objects-files-dropzone");
-    
+
     $dropzone.on("dragover dragenter", (e) => {
         e.preventDefault();
         e.stopPropagation();
         $dropzone.addClass("dragover");
     });
-    
+
     $dropzone.on("dragleave dragend drop", (e) => {
         e.preventDefault();
         e.stopPropagation();
         $dropzone.removeClass("dragover");
     });
-    
+
     $dropzone.on("drop", (e) => {
         var dt = e.originalEvent.dataTransfer;
         var droppedFiles = dt.files;
@@ -606,11 +615,11 @@ $(document).ready(() => {
                     var baseName = file.name;
                     var lastDot = baseName.lastIndexOf('.');
                     var nameWithoutExtension = lastDot !== -1 ? baseName.substring(0, lastDot) : baseName;
-                    
+
                     if (files.some(f => f.originalName === baseName)) {
                         continue; // Already exists
                     }
-                    
+
                     var defaultVarName = sanitizeVarName(nameWithoutExtension);
                     var varName = defaultVarName;
                     var counter = 1;
@@ -618,7 +627,7 @@ $(document).ready(() => {
                         varName = defaultVarName + "_" + counter;
                         counter++;
                     }
-                    
+
                     files.push({
                         id: generateRandomId(),
                         varName: varName,
@@ -657,6 +666,28 @@ $(document).ready(() => {
         }
         return sanitized;
     }
+
+    // -----------------------------------------------------------------------
+    // Object Variables tab events
+    // -----------------------------------------------------------------------
+
+    // Select an object variable from the sidebar list
+    $objectVarList.on("click", ".objects-objectvar-item", function() {
+        selectedObjectVarIndex = parseInt($(this).attr("data-objvar-index"), 10);
+        renderObjectVariablesList();
+        renderObjectVariableDetail();
+    });
+
+    // Delete the currently selected object variable
+    $objectsEditor.on("click", ".objects-delete-objectvar-button", function() {
+        var idx = parseInt($(this).attr("data-objvar-index"), 10);
+        if (idx < 0 || idx >= objectVariables.length) return;
+        objectVariables.splice(idx, 1);
+        if (selectedObjectVarIndex >= objectVariables.length)
+            selectedObjectVarIndex = objectVariables.length - 1;
+        renderObjectVariables();
+        scheduleSave();
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -727,7 +758,7 @@ function renderEnumCategoryList() {
         var activeClass = isActive ? "active" : "";
         var label = cat.name && cat.name.trim() ? cat.name : i18n._("(unnamed)");
         var itemCountText = ' (' + cat.items.length + ' item' + (cat.items.length === 1 ? '' : 's') + ')';
-        
+
         $enumCategoryList.append(
             '<a class="objects-enum-cat-item nav-group-item ' + activeClass + '" data-cat-index="' + catIndex + '">' +
             label +
@@ -908,7 +939,7 @@ function renderInstanceList() {
             var label = object.name && object.name.trim().length > 0 ? object.name : i18n._("(unnamed)");
             var objectId = object.values && object.values.id !== undefined ? object.values.id : "";
             var activeClass = index === selectedObjectIndex ? "active" : "";
-            
+
             $instanceList.append(
                 '<a class="objects-instance-item nav-group-item ' + activeClass + '" data-object-index="' + index + '">' +
                 label +
@@ -1077,7 +1108,7 @@ function renderFiles() {
 
     files.forEach((file, index) => {
         var $row = $('<tr></tr>');
-        
+
         // Delete button
         var $deleteBtn = $('<button type="button" class="btn btn-default" title="Delete file"><span class="icon icon-trash"></span></button>');
         $deleteBtn.on("click", () => {
@@ -1087,7 +1118,7 @@ function renderFiles() {
             renderValidation();
             scheduleSave();
         });
-        
+
         // Icon
         var isSound = isRegisteredSoundFile(file.originalName);
         var iconClass = isSound ? "icon-note" : "icon-picture";
@@ -1101,7 +1132,7 @@ function renderFiles() {
             renderValidation();
             scheduleSave();
         });
-        
+
         // Original File Name (read-only label)
         var $originalNameCell = $('<span></span>').text(file.originalName);
 
@@ -1115,6 +1146,101 @@ function renderFiles() {
     });
 }
 
+// ---------------------------------------------------------------------------
+// Object Variables rendering
+// ---------------------------------------------------------------------------
+
+function renderObjectVariables() {
+    renderObjectVariablesList();
+    renderObjectVariableDetail();
+}
+
+function renderObjectVariablesList() {
+    if (!$objectVarList) return;
+    $objectVarList.empty();
+
+    if (objectVariables.length === 0) {
+        $objectVarList.append(
+            '<p style="opacity:0.6; padding: 8px 12px; font-size:12px;" class="i18n">' +
+            'No object variables defined.<br>Object variables are declared in your ink files using the Objects system.' +
+            '</p>'
+        );
+        return;
+    }
+
+    objectVariables.forEach(function(ov, idx) {
+        var isActive = idx === selectedObjectVarIndex;
+        var label = (ov.name && ov.name.trim()) ? ov.name : i18n._("(unnamed)");
+        var typeLabel = (ov.typeName && ov.typeName.trim()) ? ov.typeName : i18n._("(no type)");
+        var $item = $(
+            '<a class="objects-objectvar-item nav-group-item' + (isActive ? " active" : "") + '" data-objvar-index="' + idx + '">' +
+            '<span class="objects-objectvar-item-name">' + label + '</span>' +
+            '<span style="font-size:11px; opacity:0.6; margin-left:4px;">(' + typeLabel + ')</span>' +
+            '</a>'
+        );
+        $objectVarList.append($item);
+    });
+}
+
+function renderObjectVariableDetail() {
+    if (!$objectVarDetailPanel) return;
+    $objectVarDetailPanel.empty();
+
+    if (selectedObjectVarIndex < 0 || selectedObjectVarIndex >= objectVariables.length) {
+        $objectVarDetailPanel.append(
+            '<p class="objects-enum-empty-hint i18n" style="opacity:0.6; padding:12px;">' +
+            'Select an object variable to view its details, or delete it here.' +
+            '</p>'
+        );
+        return;
+    }
+
+    var ov = objectVariables[selectedObjectVarIndex];
+    var type = objectTypes.find(function(t) { return t.name === ov.typeName; });
+
+    var $header = $('<div class="objects-panel-header"></div>');
+    $header.append('<h4>' + ((ov.name && ov.name.trim()) ? ov.name : i18n._("(unnamed)")) + '</h4>');
+    var $deleteBtn = $(
+        '<button type="button" class="btn btn-default objects-delete-objectvar-button" ' +
+        'data-objvar-index="' + selectedObjectVarIndex + '" title="' + i18n._("Delete object variable") + '">' +
+        '<span class="icon icon-trash"></span>' +
+        '</button>'
+    );
+    $header.append($deleteBtn);
+    $objectVarDetailPanel.append($header);
+
+    $objectVarDetailPanel.append('<label class="i18n">Variable Name</label>');
+    $objectVarDetailPanel.append(
+        '<input type="text" class="form-control" readonly value="' + (ov.name || "") + '">'
+    );
+
+    $objectVarDetailPanel.append('<label class="i18n" style="margin-top:10px;">Object Type</label>');
+    $objectVarDetailPanel.append(
+        '<input type="text" class="form-control" readonly value="' + (ov.typeName || "") + '">'
+    );
+
+    if (!type) {
+        $objectVarDetailPanel.append(
+            '<p style="color:#c0392b; margin-top:8px; font-size:12px;" class="i18n">' +
+            'Warning: The object type "' + (ov.typeName || "") + '" no longer exists.' +
+            '</p>'
+        );
+    } else {
+        var varNames = type.variables.map(function(v) { return v.name; }).join(", ");
+        $objectVarDetailPanel.append('<label class="i18n" style="margin-top:10px;">Generated getters / setters for</label>');
+        $objectVarDetailPanel.append(
+            '<p style="font-size:12px; opacity:0.75; margin-top:4px;">' + (varNames || i18n._("(no variables)")) + '</p>'
+        );
+    }
+
+    $objectVarDetailPanel.append(
+        '<p class="i18n" style="margin-top:16px; font-size:11px; opacity:0.6;">' +
+        'Deleting an object variable removes it from the JSON and regenerates the ink file. ' +
+        'Existing references in other ink files are not modified.' +
+        '</p>'
+    );
+}
+
 function renderTabs() {
     if( !$tabItems ) return;
     $tabItems.removeClass("active");
@@ -1124,6 +1250,7 @@ function renderTabs() {
     $classesSection.hide();
     $instancesSection.hide();
     if ($filesSection) $filesSection.hide();
+    if ($objectVariablesSection) $objectVariablesSection.hide();
 
     if( activeTab === "enums" ) {
         $enumsSection.show();
@@ -1133,6 +1260,8 @@ function renderTabs() {
         $instancesSection.show();
     } else if( activeTab === "files" ) {
         if ($filesSection) $filesSection.show();
+    } else if( activeTab === "objectvariables" ) {
+        if ($objectVariablesSection) $objectVariablesSection.show();
     }
 }
 
@@ -1167,6 +1296,7 @@ function render() {
     renderInstanceList();
     renderInstanceEditor();
     renderFiles();
+    renderObjectVariables();
     renderValidation();
 }
 
@@ -1193,6 +1323,7 @@ function refresh() {
         files = [];
         selectedTypeIndex = -1;
         selectedObjectIndex = -1;
+        selectedObjectVarIndex = -1;
         selectedEnumCatIndex = -1;
         isCreatingObject = false;
         previousTypeName = "";
@@ -1214,6 +1345,8 @@ function refresh() {
         selectedTypeIndex = objectTypes.length - 1;
     if( selectedObjectIndex >= objects.length )
         selectedObjectIndex = objects.length - 1;
+    if( selectedObjectVarIndex >= objectVariables.length )
+        selectedObjectVarIndex = objectVariables.length - 1;
     previousTypeName = selectedTypeIndex >= 0 && objectTypes[selectedTypeIndex]
         ? objectTypes[selectedTypeIndex].name
         : "";

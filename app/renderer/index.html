@@ -143,6 +143,9 @@
                                 <div class="tab-item objects-tab-item" data-tab="files">
                                     <span class="i18n">File Manager</span>
                                 </div>
+                                <div class="tab-item objects-tab-item" data-tab="objectvariables">
+                                    <span class="i18n">Object Variables</span>
+                                </div>
                             </div>
                             <div class="objects-enums-section" style="display:none">
                                 <div class="objects-columns">
@@ -238,6 +241,17 @@
                                     <p class="i18n">Drag & drop image/sound files here</p>
                                 </div>
                             </div>
+                            <div class="objects-objectvariables-section" style="display:none">
+                                <div class="objects-columns">
+                                    <div class="objects-type-panel">
+                                        <h4 class="i18n">Object Variables</h4>
+                                        <div class="objects-objectvar-list"></div>
+                                    </div>
+                                    <div class="objects-detail-panel objects-objectvar-detail-panel">
+                                        <!-- Populated dynamically by objectsView.js -->
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div><!-- editor-pane -->
@@ -298,9 +312,9 @@
 
 <script src="acesrc/ext-language_tools.js"></script>
 
-  <!-- For some reason using the minified versions causes find-in-file to break -->
-  <!-- <script src="acesrc/ace-min.js" type="text/javascript" charset="utf-8"></script> -->
-  <!-- <script src="acesrc/ext-language_tools-min.js"></script> -->
+<!-- For some reason using the minified versions causes find-in-file to break -->
+<!-- <script src="acesrc/ace-min.js" type="text/javascript" charset="utf-8"></script> -->
+<!-- <script src="acesrc/ext-language_tools-min.js"></script> -->
 
 <script>
     require('./controller.js');
