@@ -4,6 +4,7 @@ const assert = require("assert");
 
 const {ipcRenderer} = require("electron")
 const mkdirp = require('mkdirp');
+const {Editor} = require("./acesrc/ace");
 
 const InkFileSymbols = require("./inkFileSymbols.js").InkFileSymbols;
 

@@ -189,4 +189,7 @@ exports.EditorView = {
             enableLiveAutocompletion: !autoCompleteDisabled
         });
     },
+    getLine: (n)=>{
+        return editor.getValue().split("\n")[n];
+    }
 };
