@@ -1379,6 +1379,22 @@ img.issue-icon.warning {
 }
 
 /* File Manager Styling */
+#objects-editor .objects-files-root {
+  margin: 8px 0 12px;
+}
+#objects-editor .objects-files-root-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+#objects-editor .objects-files-root-folder-input {
+  flex: 1;
+}
+#objects-editor .objects-files-root-hint {
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.65;
+}
 #objects-editor .objects-files-dropzone {
   border: 2px dashed #ccc;
   border-radius: 6px;
@@ -1418,4 +1434,26 @@ img.issue-icon.warning {
 #objects-editor .objects-files-table th {
   background: #f0f0ef;
   text-align: left;
+}
+#objects-editor .objects-file-address {
+  font-family: monospace;
+  font-size: 9pt;
+  word-break: break-all;
+}
+#objects-editor .objects-file-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#objects-editor .objects-file-warning {
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+#objects-editor .objects-file-status-label {
+  font-size: 9pt;
+  opacity: 0.75;
+}
+#objects-editor .objects-file-replace-button {
+  margin-left: auto;
 }

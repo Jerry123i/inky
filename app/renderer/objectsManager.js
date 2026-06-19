@@ -163,25 +163,33 @@ function loadEnums(projectDir) {
 
 function loadFiles(projectDir) {
     if( !projectDir )
-        return [];
+        return { rootFolder: "", files: [] };
 
     var filePath = blobFilesPath(projectDir);
     if( !fs.existsSync(filePath) )
-        return [];
+        return { rootFolder: "", files: [] };
 
     try {
         var text = fs.readFileSync(filePath, "utf8");
         var doc = JSON.parse(text);
         if( !doc )
-            return [];
-        return doc.files || [];
+            return { rootFolder: "", files: [] };
+        return {
+            rootFolder: typeof doc.rootFolder === "string" ? doc.rootFolder : "",
+            files: doc.files || []
+        };
     } catch( err ) {
-        return [];
+        return { rootFolder: "", files: [] };
     }
 }
 
-function saveFiles(projectDir, files) {
-    var doc = { version: 1, files: files || [] };
+function saveFiles(projectDir, filesDocument) {
+    filesDocument = filesDocument || {};
+    var doc = {
+        version: 1,
+        rootFolder: typeof filesDocument.rootFolder === "string" ? filesDocument.rootFolder : "",
+        files: filesDocument.files || []
+    };
     writeJsonFile(blobFilesPath(projectDir), doc);
 }
 
@@ -190,8 +198,8 @@ function loadAll(projectDir) {
     var objects = syncObjectsWithTypes(objectTypes, loadObjects(projectDir));
     var objectVariables = loadObjectVariables(projectDir);
     var enums = loadEnums(projectDir);
-    var files = loadFiles(projectDir);
-    return { objectTypes, objects, objectVariables, enums, files };
+    var filesDocument = loadFiles(projectDir);
+    return { objectTypes, objects, objectVariables, enums, filesDocument };
 }
 
 function saveObjectTypes(projectDir, objectTypes, objectVariables, enums) {
@@ -249,12 +257,12 @@ function regenerateInk(project, objectTypes, objects, objectVariables, enums) {
 function regenerateFilesInk(project, files) {
     var projectDir = project.mainInk.projectDir;
     if( typeof files === "undefined" )
-        files = loadFiles(projectDir);
+        files = loadFiles(projectDir).files;
     var content = generateFilesInk(files);
     updateManagedFilesInkFile(project, content);
 }
 
-function saveAll(project, objectTypes, objects, objectVariables, enums, files) {
+function saveAll(project, objectTypes, objects, objectVariables, enums, filesDocument) {
     var projectDir = project.mainInk.projectDir;
     if( !projectDir )
         return { success: false, errors: [] };
@@ -263,8 +271,8 @@ function saveAll(project, objectTypes, objects, objectVariables, enums, files) {
         objectVariables = loadObjectVariables(projectDir);
     if( typeof enums === "undefined" )
         enums = loadEnums(projectDir);
-    if( typeof files === "undefined" )
-        files = loadFiles(projectDir);
+    if( typeof filesDocument === "undefined" )
+        filesDocument = loadFiles(projectDir);
 
     objects = syncObjectsWithTypes(objectTypes, objects);
     var errors = validateAll(objectTypes, objects, enums);
@@ -273,9 +281,9 @@ function saveAll(project, objectTypes, objects, objectVariables, enums, files) {
 
     saveObjectTypes(projectDir, objectTypes, objectVariables, enums);
     saveObjects(projectDir, objects);
-    saveFiles(projectDir, files);
+    saveFiles(projectDir, filesDocument);
     regenerateInk(project, objectTypes, objects, objectVariables, enums);
-    regenerateFilesInk(project, files);
+    regenerateFilesInk(project, filesDocument.files);
     return { success: true, errors: [], objects: objects };
 }
 
@@ -291,7 +299,7 @@ function createObjectsFiles(project) {
         saveObjects(projectDir, []);
 
     if( !fs.existsSync(blobFilesPath(projectDir)) )
-        saveFiles(projectDir, []);
+        saveFiles(projectDir, { rootFolder: "", files: [] });
 
     var objectTypes = loadObjectTypes(projectDir);
     var objects = loadObjects(projectDir);
@@ -311,8 +319,8 @@ function createObjectsFiles(project) {
     if( project.mainInk.includes.indexOf(VARS_FUNCTIONS_FILENAME) === -1 )
         project.mainInk.addIncludeLine(VARS_FUNCTIONS_FILENAME);
 
-    var files = loadFiles(projectDir);
-    var filesInkContent = generateFilesInk(files);
+    var filesDocument = loadFiles(projectDir);
+    var filesInkContent = generateFilesInk(filesDocument.files);
     if( !fs.existsSync(filesManagerPath(projectDir)) )
         fs.writeFileSync(filesManagerPath(projectDir), filesInkContent, "utf8");
 

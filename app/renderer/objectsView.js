@@ -1,5 +1,8 @@
 const $ = window.jQuery = require('./jquery-2.2.3.min.js');
 const _ = require("lodash");
+const fs = require("fs");
+const path = require("path");
+const { ipcRenderer } = require("electron");
 const i18n = require("./i18n.js");
 const InkProject = require("./inkProject.js").InkProject;
 const ObjectsManager = require("./objectsManager.js");
@@ -34,6 +37,9 @@ var $classesSection = null;
 var $instancesSection = null;
 var $filesSection = null;
 var $filesBody = null;
+var $filesRootFolderInput = null;
+var $selectRootFolderButton = null;
+var $clearRootFolderButton = null;
 var $objectVariablesSection = null;
 var $objectVarList = null;
 var $objectVarDetailPanel = null;
@@ -46,6 +52,7 @@ var objectTypes = [];
 var objects = [];
 var objectVariables = [];
 var files = [];
+var rootFolder = "";
 var selectedTypeIndex = -1;
 var selectedObjectIndex = -1;
 var previousTypeName = "";
@@ -68,13 +75,116 @@ function generateRandomId() {
     return Math.floor(Math.random() * 1000000000);
 }
 
+var IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp", ".tiff"];
 var SOUND_EXTENSIONS = [".mp3", ".wav", ".ogg", ".aac", ".flac", ".m4a", ".wma"];
+var MEDIA_EXTENSIONS = IMAGE_EXTENSIONS.concat(SOUND_EXTENSIONS);
 
 function isRegisteredSoundFile(originalName) {
     if( !originalName )
         return false;
     var ext = originalName.substring(originalName.lastIndexOf(".")).toLowerCase();
     return SOUND_EXTENSIONS.indexOf(ext) !== -1;
+}
+
+function nameWithoutExtension(fileName) {
+    var ext = path.extname(fileName);
+    return ext ? fileName.substring(0, fileName.length - ext.length) : fileName;
+}
+
+function normalizeAddressSeparators(address) {
+    return address.replace(/\\/g, "/");
+}
+
+function addressForFile(filePath, originalName) {
+    var baseName = path.basename(filePath || originalName || "");
+    var fallback = nameWithoutExtension(baseName);
+
+    if( !rootFolder || !filePath )
+        return fallback;
+
+    var relativePath = path.relative(rootFolder, filePath);
+    if( !relativePath || relativePath.indexOf("..") === 0 || path.isAbsolute(relativePath) )
+        return fallback;
+
+    var parsed = path.parse(relativePath);
+    var address = path.join(parsed.dir, parsed.name);
+    return normalizeAddressSeparators(address);
+}
+
+function extensionForFile(file) {
+    return path.extname(file.originalName || "");
+}
+
+function resolvedFilePath(file) {
+    if( !rootFolder || !file || !file.fileName )
+        return "";
+    return path.join(rootFolder, file.fileName + extensionForFile(file));
+}
+
+function isFileMissing(file) {
+    var filePath = resolvedFilePath(file);
+    return !!filePath && !fs.existsSync(filePath);
+}
+
+function replaceMediaReference(oldValue, newValue) {
+    if( !oldValue || oldValue === newValue )
+        return;
+
+    objects.forEach(object => {
+        var type = objectTypes.find(t => t.name === object.typeName);
+        if( !type || !object.values )
+            return;
+
+        type.variables.forEach(variable => {
+            if( variable.type !== "image" && variable.type !== "audio" )
+                return;
+            if( object.values[variable.name] === oldValue )
+                object.values[variable.name] = newValue;
+        });
+    });
+}
+
+function isImageOrSoundPath(filePath) {
+    var ext = path.extname(filePath || "").toLowerCase();
+    return MEDIA_EXTENSIONS.indexOf(ext) !== -1;
+}
+
+function isImageOrSoundFile(file) {
+    var type = file.type;
+    if (type && (type.startsWith("image/") || type.startsWith("audio/"))) {
+        return true;
+    }
+    return isImageOrSoundPath(file.path || file.name);
+}
+
+function refreshFilesAfterChange() {
+    renderFiles();
+    renderInstanceEditor();
+    renderValidation();
+    scheduleSave();
+}
+
+function setRootFolder(newRootFolder) {
+    var oldRootFolder = rootFolder;
+    rootFolder = newRootFolder || "";
+
+    files.forEach(file => {
+        if( !file.fileName )
+            return;
+
+        var oldPath = oldRootFolder
+            ? path.join(oldRootFolder, file.fileName + extensionForFile(file))
+            : path.join(rootFolder, file.originalName || "");
+        if( !oldPath || !fs.existsSync(oldPath) )
+            return;
+
+        var oldAddress = file.fileName;
+        var newAddress = addressForFile(oldPath, file.originalName);
+        if( oldAddress !== newAddress ) {
+            file.fileName = newAddress;
+            replaceMediaReference(oldAddress, newAddress);
+        }
+    });
 }
 
 function registeredFilesForMediaType(mediaType) {
@@ -135,6 +245,9 @@ $(document).ready(() => {
     $instancesSection = $objectsEditor.find(".objects-instances-section");
     $filesSection = $objectsEditor.find(".objects-files-section");
     $filesBody = $objectsEditor.find(".objects-files-body");
+    $filesRootFolderInput = $objectsEditor.find(".objects-files-root-folder-input");
+    $selectRootFolderButton = $objectsEditor.find(".objects-files-root-folder-button");
+    $clearRootFolderButton = $objectsEditor.find(".objects-files-clear-root-folder-button");
 
     $objectVariablesSection = $objectsEditor.find(".objects-objectvariables-section");
     $objectVarList = $objectsEditor.find(".objects-objectvar-list");
@@ -592,6 +705,27 @@ $(document).ready(() => {
     // -----------------------------------------------------------------------
     var $dropzone = $objectsEditor.find(".objects-files-dropzone");
 
+    $selectRootFolderButton.on("click", () => {
+        ipcRenderer.invoke("showOpenDialog", {
+            title: i18n._("Choose root folder"),
+            properties: ["openDirectory"]
+        }).then(result => {
+            if( !result || result.canceled || !result.filePaths || result.filePaths.length === 0 )
+                return;
+
+            setRootFolder(result.filePaths[0]);
+            refreshFilesAfterChange();
+        });
+    });
+
+    $clearRootFolderButton.on("click", () => {
+        if( !rootFolder )
+            return;
+
+        setRootFolder("");
+        refreshFilesAfterChange();
+    });
+
     $dropzone.on("dragover dragenter", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -611,16 +745,15 @@ $(document).ready(() => {
             var addedAny = false;
             for (var i = 0; i < droppedFiles.length; i++) {
                 var file = droppedFiles[i];
-                if (isImageOrSound(file)) {
+                if (isImageOrSoundFile(file)) {
                     var baseName = file.name;
-                    var lastDot = baseName.lastIndexOf('.');
-                    var nameWithoutExtension = lastDot !== -1 ? baseName.substring(0, lastDot) : baseName;
+                    var fileAddress = addressForFile(file.path, baseName);
 
-                    if (files.some(f => f.originalName === baseName)) {
+                    if (files.some(f => f.fileName === fileAddress)) {
                         continue; // Already exists
                     }
 
-                    var defaultVarName = sanitizeVarName(nameWithoutExtension);
+                    var defaultVarName = sanitizeVarName(path.basename(fileAddress));
                     var varName = defaultVarName;
                     var counter = 1;
                     while (files.some(f => f.varName === varName)) {
@@ -631,7 +764,7 @@ $(document).ready(() => {
                     files.push({
                         id: generateRandomId(),
                         varName: varName,
-                        fileName: nameWithoutExtension,
+                        fileName: fileAddress,
                         originalName: baseName
                     });
                     addedAny = true;
@@ -645,19 +778,6 @@ $(document).ready(() => {
             }
         }
     });
-
-    function isImageOrSound(file) {
-        var type = file.type;
-        if (type && (type.startsWith("image/") || type.startsWith("audio/"))) {
-            return true;
-        }
-        var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-        var allowedExts = [
-            ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp", ".tiff",
-            ".mp3", ".wav", ".ogg", ".aac", ".flac", ".m4a", ".wma"
-        ];
-        return allowedExts.indexOf(ext) !== -1;
-    }
 
     function sanitizeVarName(name) {
         var sanitized = name.replace(/[^a-zA-Z0-9_]/g, "_");
@@ -708,7 +828,10 @@ function saveIfValid() {
     if( !project || !project.mainInk.projectDir )
         return;
 
-    var result = ObjectsManager.saveAll(project, objectTypes, objects, objectVariables, enums, files);
+    var result = ObjectsManager.saveAll(project, objectTypes, objects, objectVariables, enums, {
+        rootFolder: rootFolder,
+        files: files
+    });
     if( result.objects )
         objects = result.objects;
     renderValidation(result.errors);
@@ -1099,10 +1222,15 @@ function renderInstanceEditor() {
 
 function renderFiles() {
     if (!$filesBody) return;
+    if ($filesRootFolderInput)
+        $filesRootFolderInput.val(rootFolder || "");
+    if ($clearRootFolderButton)
+        $clearRootFolderButton.prop("disabled", !rootFolder);
+
     $filesBody.empty();
 
     if (files.length === 0) {
-        $filesBody.append('<tr><td colspan="4" style="text-align:center; opacity:0.6;" class="i18n">No files added yet. Drag and drop files here to track them.</td></tr>');
+        $filesBody.append('<tr><td colspan="6" style="text-align:center; opacity:0.6;" class="i18n">No files added yet. Drag and drop files here to track them.</td></tr>');
         return;
     }
 
@@ -1133,15 +1261,61 @@ function renderFiles() {
             scheduleSave();
         });
 
+        var $addressCell = $('<span class="objects-file-address"></span>').text(file.fileName || "");
+
         // Original File Name (read-only label)
         var $originalNameCell = $('<span></span>').text(file.originalName);
+
+        var missing = isFileMissing(file);
+        var $status = $('<div class="objects-file-status"></div>');
+        if( missing ) {
+            var $warning = $('<span class="objects-file-warning"><img class="issue-icon warning" src="img/warning-icon.png" alt=""/></span>');
+            $warning.attr("title", i18n._('File "%s" was not found under the selected root folder.').replace("%s", file.fileName || file.originalName || ""));
+            $status.append($warning);
+            $status.append($('<span class="objects-file-status-label"></span>').text(i18n._("Missing")));
+        } else {
+            $status.append($('<span class="objects-file-status-label"></span>').text(rootFolder ? i18n._("Found") : i18n._("No root")));
+        }
+
+        var $replaceBtn = $('<button type="button" class="btn btn-default objects-file-replace-button"></button>').text(i18n._("Replace"));
+        $replaceBtn.on("click", () => {
+            ipcRenderer.invoke("showOpenDialog", {
+                title: i18n._("Choose replacement file"),
+                properties: ["openFile"],
+                filters: [
+                    { name: i18n._("Media files"), extensions: MEDIA_EXTENSIONS.map(ext => ext.substring(1)) }
+                ]
+            }).then(result => {
+                if( !result || result.canceled || !result.filePaths || result.filePaths.length === 0 )
+                    return;
+
+                var selectedPath = result.filePaths[0];
+                if( !isImageOrSoundPath(selectedPath) )
+                    return;
+
+                var oldAddress = file.fileName;
+                var newOriginalName = path.basename(selectedPath);
+                var newAddress = addressForFile(selectedPath, newOriginalName);
+                if( files.some(otherFile => otherFile !== file && otherFile.fileName === newAddress) ) {
+                    alert(i18n._("A file with this saved address is already registered."));
+                    return;
+                }
+                file.originalName = newOriginalName;
+                file.fileName = newAddress;
+                replaceMediaReference(oldAddress, newAddress);
+                refreshFilesAfterChange();
+            });
+        });
+        $status.append($replaceBtn);
 
         var $tdDel = $('<td style="text-align: center; vertical-align: middle;"></td>').append($deleteBtn);
         var $tdIcon = $('<td style="text-align: center; vertical-align: middle;"></td>').append($iconSpan);
         var $tdVar = $('<td></td>').append($varNameInput);
+        var $tdAddress = $('<td></td>').append($addressCell);
         var $tdOrig = $('<td></td>').append($originalNameCell);
+        var $tdStatus = $('<td></td>').append($status);
 
-        $row.append($tdDel).append($tdIcon).append($tdVar).append($tdOrig);
+        $row.append($tdDel).append($tdIcon).append($tdVar).append($tdAddress).append($tdOrig).append($tdStatus);
         $filesBody.append($row);
     });
 }
@@ -1321,6 +1495,7 @@ function refresh() {
         objectVariables = [];
         enums = [];
         files = [];
+        rootFolder = "";
         selectedTypeIndex = -1;
         selectedObjectIndex = -1;
         selectedObjectVarIndex = -1;
@@ -1337,7 +1512,8 @@ function refresh() {
     objectTypes = _.cloneDeep(loaded.objectTypes);
     objects = _.cloneDeep(loaded.objects);
     objectVariables = _.cloneDeep(loaded.objectVariables || []);
-    files = _.cloneDeep(loaded.files || []);
+    rootFolder = loaded.filesDocument && loaded.filesDocument.rootFolder ? loaded.filesDocument.rootFolder : "";
+    files = _.cloneDeep(loaded.filesDocument && loaded.filesDocument.files ? loaded.filesDocument.files : []);
 
     isCreatingObject = false;
 

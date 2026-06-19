@@ -225,13 +225,24 @@
                             </div>
                             <div class="objects-files-section" style="display:none">
                                 <h4 class="i18n">Recorded Files</h4>
+                                <div class="objects-files-root">
+                                    <label class="i18n">Root Folder</label>
+                                    <div class="objects-files-root-controls">
+                                        <input type="text" class="form-control objects-files-root-folder-input" readonly placeholder="No root folder selected">
+                                        <button type="button" class="btn btn-default objects-files-root-folder-button i18n">Choose...</button>
+                                        <button type="button" class="btn btn-default objects-files-clear-root-folder-button i18n">Clear</button>
+                                    </div>
+                                    <p class="objects-files-root-hint i18n">Files inside the root folder are saved as addresses relative to it.</p>
+                                </div>
                                 <table class="objects-files-table">
                                     <thead>
                                     <tr>
                                         <th style="width: 40px;"></th>
                                         <th style="width: 40px;"></th>
                                         <th class="i18n">Ink VAR Name</th>
+                                        <th class="i18n">Saved Address</th>
                                         <th class="i18n">Original File</th>
+                                        <th class="i18n">Status</th>
                                     </tr>
                                     </thead>
                                     <tbody class="objects-files-body"></tbody>

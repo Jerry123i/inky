@@ -63,6 +63,11 @@ ipcMain.handle("showSaveDialog", async (event,saveOptions) => {
 
 })
 
+ipcMain.handle("showOpenDialog", async (event,openOptions) => {
+    return dialog.showOpenDialog(openOptions)
+
+})
+
 ipcMain.handle("try-close", async (event) =>{
     return dialog.showMessageBox({
         type: "warning",
