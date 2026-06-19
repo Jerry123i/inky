@@ -247,9 +247,6 @@ EditorView.setEvents({
         }
     },
     "jumpToInclude": (includePath) => {
-        var inkFile = InkProject.currentProject.inkFileWithRelativePath(includePath);
-        if( inkFile && inkFile.isHiddenSystemFile )
-            return;
         ObjectsView.hide();
         InkProject.currentProject.showInkFile(includePath);
         NavHistory.addStep();

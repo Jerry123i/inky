@@ -313,7 +313,6 @@ function createObjectsFiles(project) {
     var inkFile = project.inkFileWithRelativePath(VARS_FUNCTIONS_FILENAME);
     if( !inkFile )
         inkFile = project.createInkFile(VARS_FUNCTIONS_FILENAME, isBrandNew = false);
-    inkFile.isHiddenSystemFile = true;
     updateManagedInkFile(project, inkContent);
 
     if( project.mainInk.includes.indexOf(VARS_FUNCTIONS_FILENAME) === -1 )
@@ -327,7 +326,6 @@ function createObjectsFiles(project) {
     var filesInkFile = project.inkFileWithRelativePath(FILES_MANAGER_FILENAME);
     if( !filesInkFile )
         filesInkFile = project.createInkFile(FILES_MANAGER_FILENAME, isBrandNew = false);
-    filesInkFile.isHiddenSystemFile = true;
     updateManagedFilesInkFile(project, filesInkContent);
 
     if( project.mainInk.includes.indexOf(FILES_MANAGER_FILENAME) === -1 )

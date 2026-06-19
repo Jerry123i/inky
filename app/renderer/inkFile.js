@@ -61,7 +61,6 @@ function InkFile(anyPath, mainInkFile, isBrandNew, inkMode, events) {
     this.aceSession = null;
 
     this.includes = [];
-    this.isHiddenSystemFile = false;
 
     // Temporarily set after fs.readFile completes so
     // we don't get a double fileChanged callback before

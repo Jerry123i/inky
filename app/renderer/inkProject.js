@@ -295,9 +295,6 @@ InkProject.prototype.showInkFile = function(inkFile) {
     if( _.isString(inkFile) )
         inkFile = this.inkFileWithRelativePath(inkFile);
 
-    if( inkFile && inkFile.isHiddenSystemFile )
-        return;
-
     if( inkFile && inkFile != this.activeInkFile ) {
         if( this.activeInkFile )
             this.activeInkFile.isActive = false;

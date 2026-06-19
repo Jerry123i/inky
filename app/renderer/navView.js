@@ -3,6 +3,7 @@ const path = require("path");
 const _ = require("lodash");
 const i18n = require("./i18n.js");
 const InkFile = require("./inkFile.js").InkFile;
+const { isManagedObjectsInkFile } = require("./objectsConstants.js");
 const { range, toInteger } = require('lodash');
 
 const slideAnimDuration = 200;
@@ -238,10 +239,13 @@ function updateCurrentKnot(mainInk, cursorPos){
     }
 }
 
+function fileNavIconClass(file) {
+    return isManagedObjectsInkFile(file) ? "icon-cog" : "icon-doc-text";
+}
+
 function setFiles(mainInk, allFiles) {
-    var visibleFiles = _.filter(allFiles, f => !f.isHiddenSystemFile);
-    var unusedFiles = _.filter(visibleFiles, f => f.isSpare);
-    var normalIncludes = _.filter(visibleFiles, f => !f.isSpare && f != mainInk);
+    var unusedFiles = _.filter(allFiles, f => f.isSpare);
+    var normalIncludes = _.filter(allFiles, f => !f.isSpare && f != mainInk);
     var groupedIncludes = _.groupBy(normalIncludes, f => { 
         var dirName = path.dirname(f.relativePath());
         if( dirName == "." )
@@ -284,7 +288,7 @@ function setFiles(mainInk, allFiles) {
             if( file.isLoading ) extraClass += " loading";
             
             items = items + `<span class="nav-group-item ${extraClass}" data-file-id="${file.id}">
-            <span class="icon icon-doc-text"></span>
+            <span class="icon ${fileNavIconClass(file)}"></span>
             <span class="filename">${name}</span>
             </span>`;
         });
