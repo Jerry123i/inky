@@ -1385,12 +1385,12 @@ function renderObjectVariableDetail() {
 
     $objectVarDetailPanel.append('<label class="i18n">Variable Name</label>');
     $objectVarDetailPanel.append(
-        '<input type="text" class="form-control" readonly value="' + (ov.name || "") + '">'
+        '<input type="text" class="form-control objects-objectvar-readonly-input" readonly value="' + (ov.name || "") + '">'
     );
 
     $objectVarDetailPanel.append('<label class="i18n" style="margin-top:10px;">Object Type</label>');
     $objectVarDetailPanel.append(
-        '<input type="text" class="form-control" readonly value="' + (ov.typeName || "") + '">'
+        '<input type="text" class="form-control objects-objectvar-readonly-input" readonly value="' + (ov.typeName || "") + '">'
     );
 
     if (!type) {
